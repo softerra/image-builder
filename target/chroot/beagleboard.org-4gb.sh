@@ -258,6 +258,11 @@ install_node_pkgs () {
 			fi
 		fi
 
+		if [ -f /usr/bin/make ] ; then
+			echo "Installing node-red"
+			TERM=dumb npm install -g node-red --arch=armhf
+		fi
+
 		cd /opt/
 
 		#cloud9 installed by cloud9-installer
