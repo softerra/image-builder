@@ -23,7 +23,8 @@
 export LC_ALL=C
 
 chromium_release="chromium-33.0.1750.117"
-u_boot_release="v2015.01"
+u_boot_release="v2015.07-rc2"
+bone101_git_sha="53fde450735a331963d337576239bae4c81c32fb"
 
 #contains: rfs_username, release_date
 if [ -f /etc/rcn-ee.conf ] ; then
@@ -91,22 +92,13 @@ setup_system () {
 		fi
 	fi
 
-	if [ -f /opt/scripts/mods/wheezy-systemd-poweroff.diff ] ; then
-		if [ -f /usr/bin/patch ] ; then
-			echo "Patching: /lib/udev/rules.d/70-power-switch.rules"
-			patch -p1 < /opt/scripts/mods/wheezy-systemd-poweroff.diff
-		fi
-	fi
+	if [ -f /lib/systemd/system/serial-getty@.service ] ; then
+		cp /lib/systemd/system/serial-getty@.service /etc/systemd/system/serial-getty@ttyGS0.service
+		ln -s /etc/systemd/system/serial-getty@ttyGS0.service /etc/systemd/system/getty.target.wants/serial-getty@ttyGS0.service
 
-	if [ -f /opt/scripts/boot/am335x_evm.sh ] ; then
-		if [ -f /lib/systemd/system/serial-getty@.service ] ; then
-			cp /lib/systemd/system/serial-getty@.service /etc/systemd/system/serial-getty@ttyGS0.service
-			ln -s /etc/systemd/system/serial-getty@ttyGS0.service /etc/systemd/system/getty.target.wants/serial-getty@ttyGS0.service
-
-			echo "" >> /etc/securetty
-			echo "#USB Gadget Serial Port" >> /etc/securetty
-			echo "ttyGS0" >> /etc/securetty
-		fi
+		echo "" >> /etc/securetty
+		echo "#USB Gadget Serial Port" >> /etc/securetty
+		echo "ttyGS0" >> /etc/securetty
 	fi
 }
 
@@ -276,15 +268,20 @@ install_node_pkgs () {
 		if [ -f /usr/local/bin/jekyll ] ; then
 			git_repo="https://github.com/beagleboard/bone101"
 			git_target_dir="/var/lib/cloud9"
-			git_clone
+
+			if [ "x${bone101_git_sha}" = "x" ] ; then
+				git_clone
+			else
+				git_clone_full
+			fi
 
 			if [ -f ${git_target_dir}/.git/config ] ; then
 				chown -R ${rfs_username}:${rfs_username} ${git_target_dir}
 				cd ${git_target_dir}/
 
-				#patch around jekyll always regenerating from cloud9 changes..
-				echo "baseurl: /bone101" > /var/lib/cloud9/_config.yml
-				echo "timezone: America/New_York" >>  /var/lib/cloud9/_config.yml
+				if [ ! "x${bone101_git_sha}" = "x" ] ; then
+					git checkout ${bone101_git_sha} -b tmp-production
+				fi
 
 				echo "jekyll pre-building bone101"
 				/usr/local/bin/jekyll build --destination bone101
@@ -393,10 +390,10 @@ install_gem_pkgs () {
 		gem_jessie="--no-document"
 
 		echo "gem: [beaglebone]"
-		gem install beaglebone
+		gem install beaglebone || true
 
 		echo "gem: [jekyll ${gem_wheezy}]"
-		gem install jekyll ${gem_wheezy}
+		gem install jekyll ${gem_wheezy} || true
 	fi
 }
 
@@ -462,11 +459,11 @@ install_git_repos () {
 install_build_pkgs () {
 	cd /opt/
 	if [ -f /usr/bin/xz ] ; then
-		wget https://rcn-ee.net/pkgs/chromium/${chromium_release}-armhf.tar.xz
+		wget https://rcn-ee.com/pkgs/chromium/${chromium_release}-armhf.tar.xz
 		if [ -f /opt/${chromium_release}-armhf.tar.xz ] ; then
 			tar xf ${chromium_release}-armhf.tar.xz -C /
 			rm -rf ${chromium_release}-armhf.tar.xz || true
-			echo "${chromium_release} : https://rcn-ee.net/pkgs/chromium/${chromium_release}.tar.xz" >> /opt/source/list.txt
+			echo "${chromium_release} : https://rcn-ee.com/pkgs/chromium/${chromium_release}.tar.xz" >> /opt/source/list.txt
 
 			#link Chromium to /usr/bin/x-www-browser
 			update-alternatives --install /usr/bin/x-www-browser x-www-browser /usr/bin/chromium 200
@@ -475,9 +472,10 @@ install_build_pkgs () {
 }
 
 other_source_links () {
-	rcn_https="https://raw.githubusercontent.com/RobertCNelson/Bootloader-Builder/master/patches"
+	rcn_https="https://rcn-ee.com/repos/git/u-boot-patches"
 
 	mkdir -p /opt/source/u-boot_${u_boot_release}/
+	wget --directory-prefix="/opt/source/u-boot_${u_boot_release}/" ${rcn_https}/${u_boot_release}/0001-omap3_beagle-uEnv.txt-bootz-n-fixes.patch
 	wget --directory-prefix="/opt/source/u-boot_${u_boot_release}/" ${rcn_https}/${u_boot_release}/0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
 	wget --directory-prefix="/opt/source/u-boot_${u_boot_release}/" ${rcn_https}/${u_boot_release}/0001-beagle_x15-uEnv.txt-bootz-n-fixes.patch
 
@@ -501,7 +499,7 @@ unsecure_root () {
 }
 
 todo () {
-	#stuff i need to package in repos.rcn-ee.net
+	#stuff i need to package in repos.rcn-ee.com
 	#
 	cd /
 	if [ ! -f /etc/Wireless/RT2870STA/RT2870STA.dat ] ; then

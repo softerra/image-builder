@@ -22,7 +22,7 @@
 
 #http://ftp.us.debian.org/debian/pool/main/d/debootstrap/
 #1.0.${minimal_debootstrap}
-minimal_debootstrap="67"
+minimal_debootstrap="70"
 host_arch="$(uname -m)"
 
 debootstrap_is_installed () {
@@ -51,7 +51,7 @@ debootstrap_what_version
 
 if [[ "$test_debootstrap" < "$minimal_debootstrap" ]] ; then
 	echo "Log: Installing minimal debootstrap version: 1.0."${minimal_debootstrap}"..."
-	wget https://rcn-ee.net/mirror/debootstrap/debootstrap_1.0.${minimal_debootstrap}_all.deb
+	wget https://rcn-ee.com/mirror/debootstrap/debootstrap_1.0.${minimal_debootstrap}_all.deb
 	sudo dpkg -i debootstrap_1.0.${minimal_debootstrap}_all.deb
 	rm -rf debootstrap_1.0.${minimal_debootstrap}_all.deb || true
 fi

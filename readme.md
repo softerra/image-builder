@@ -44,28 +44,28 @@ Master branch:
 
 eewiki.net: Debian Stable (armel) minfs:
 
-    ./RootStock-NG.sh -c eewiki_minfs_debian_stable_armel
+    ./RootStock-NG.sh -c eewiki_minfs_debian_wheezy_armel
 
 eewiki.net: Debian Stable (armhf) minfs:
 
-    ./RootStock-NG.sh -c eewiki_minfs_debian_stable_armhf
+    ./RootStock-NG.sh -c eewiki_minfs_debian_wheezy_armhf
 
 eewiki.net: Ubuntu Stable (armhf) minfs:
 
-    ./RootStock-NG.sh -c eewiki_minfs_ubuntu_stable_armhf
+    ./RootStock-NG.sh -c eewiki_minfs_ubuntu_trusty_armhf
 
 eewiki.net: Debian Stable (armel) barefs:
 
-    ./RootStock-NG.sh -c eewiki_bare_debian_stable_armel
+    ./RootStock-NG.sh -c eewiki_bare_debian_wheezy_armel
 
 eewiki.net: Debian Stable (armhf) barefs:
 
-    ./RootStock-NG.sh -c eewiki_bare_debian_stable_armhf
+    ./RootStock-NG.sh -c eewiki_bare_debian_wheezy_armhf
 
 elinux.org: Debian Images:
 
-    ./RootStock-NG.sh -c rcn-ee_console_debian_stable_armhf
-    ./RootStock-NG.sh -c rcn-ee_console_debian_testing_armhf
+    ./RootStock-NG.sh -c rcn-ee_console_debian_wheezy_armhf
+    ./RootStock-NG.sh -c rcn-ee_console_debian_jessie_armhf
     http://elinux.org/BeagleBoardDebian#Demo_Image
 
 elinux.org: Ubuntu Images:
@@ -82,14 +82,5 @@ Release Process:
 MachineKit:
 ------------
 
-Branch:
-
-    git clone -b config-hooks https://github.com/cdsteinkuehler/omap-image-builder
-
-Images:
-
-    http://bb-lcnc.blogspot.com/p/machinekit_16.html
-
-Maintainer hints (aka me):
-
-    git pull --no-edit https://github.com/cdsteinkuehler/omap-image-builder MachineKit
+    ./RootStock-NG.sh -c machinekit-debian-wheezy
+    http://elinux.org/Beagleboard:BeagleBoneBlack_Debian#BBW.2FBBB_.28All_Revs.29_Machinekit

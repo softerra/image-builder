@@ -115,8 +115,6 @@ setup_desktop () {
 #		echo "        Driver          \"modesetting\"" >> ${wfile}
 		echo "        Driver          \"fbdev\"" >> ${wfile}
 
-		echo "#HWcursor_false        Option          \"HWcursor\"          \"false\"" >> ${wfile}
-
 		echo "EndSection" >> ${wfile}
 		echo "" >> ${wfile}
 		echo "Section \"Screen\"" >> ${wfile}
@@ -500,9 +498,9 @@ is_this_qemu
 setup_system
 setup_desktop
 
-install_gem_pkgs
-install_node_pkgs
-install_pip_pkgs
+#install_gem_pkgs
+#install_node_pkgs
+#install_pip_pkgs
 if [ -f /usr/bin/git ] ; then
 	install_git_repos
 fi

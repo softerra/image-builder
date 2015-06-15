@@ -128,6 +128,11 @@ check_defines () {
 		deb_additional_pkgs="$(echo ${deb_additional_pkgs} | sed 's/,/ /g')"
 	fi
 
+	if [ ! "x${deb_include}" = "x" ] ; then
+		include=$(echo ${deb_include} | sed 's/,/ /g')
+		deb_additional_pkgs="${deb_additional_pkgs} ${include}"
+	fi
+
 	if [ "x${repo_rcnee}" = "xenable" ] ; then
 		if [ ! "x${repo_rcnee_pkg_list}" = "x" ] ; then
 			deb_additional_pkgs="${deb_additional_pkgs} ${repo_rcnee_pkg_list}"
@@ -191,6 +196,8 @@ chroot_umount () {
 		fi
 	fi
 }
+
+trap chroot_umount EXIT
 
 check_defines
 
@@ -335,14 +342,14 @@ fi
 if [ "x${repo_rcnee}" = "xenable" ] ; then
 	#no: precise
 	echo "" >> ${wfile}
-	echo "#Kernel source (repos.rcn-ee.net) : https://github.com/RobertCNelson/linux-stable-rcn-ee" >> ${wfile}
+	echo "#Kernel source (repos.rcn-ee.com) : https://github.com/RobertCNelson/linux-stable-rcn-ee" >> ${wfile}
 	echo "#" >> ${wfile}
 	echo "#git clone https://github.com/RobertCNelson/linux-stable-rcn-ee" >> ${wfile}
 	echo "#cd ./linux-stable-rcn-ee" >> ${wfile}
 	echo "#git checkout \`uname -r\` -b tmp" >> ${wfile}
 	echo "#" >> ${wfile}
-	echo "deb [arch=armhf] http://repos.rcn-ee.net/${deb_distribution}/ ${deb_codename} main" >> ${wfile}
-	echo "#deb-src [arch=armhf] http://repos.rcn-ee.net/${deb_distribution}/ ${deb_codename} main" >> ${wfile}
+	echo "deb [arch=armhf] http://repos.rcn-ee.com/${deb_distribution}/ ${deb_codename} main" >> ${wfile}
+	echo "#deb-src [arch=armhf] http://repos.rcn-ee.com/${deb_distribution}/ ${deb_codename} main" >> ${wfile}
 
 	sudo cp -v ${OIB_DIR}/target/keyring/repos.rcn-ee.net-archive-keyring.asc ${tempdir}/tmp/repos.rcn-ee.net-archive-keyring.asc
 fi
@@ -374,27 +381,45 @@ sudo mv /tmp/hosts ${tempdir}/etc/hosts
 echo "${rfs_hostname}" > /tmp/hostname
 sudo mv /tmp/hostname ${tempdir}/etc/hostname
 
-case "${deb_distribution}" in
-debian)
-	sudo cp ${OIB_DIR}/target/init_scripts/generic-${deb_distribution}.sh ${tempdir}/etc/init.d/generic-boot-script.sh
-	sudo cp ${OIB_DIR}/target/init_scripts/capemgr-${deb_distribution}.sh ${tempdir}/etc/init.d/capemgr.sh
-	sudo cp ${OIB_DIR}/target/init_scripts/capemgr ${tempdir}/etc/default/
-	distro="Debian"
-	;;
-ubuntu)
-	sudo cp ${OIB_DIR}/target/init_scripts/generic-${deb_distribution}.conf ${tempdir}/etc/init/generic-boot-script.conf
-	sudo cp ${OIB_DIR}/target/init_scripts/capemgr-${deb_distribution}.sh ${tempdir}/etc/init/capemgr.sh
-	sudo cp ${OIB_DIR}/target/init_scripts/capemgr ${tempdir}/etc/default/
-	distro="Ubuntu"
+if [ "x${deb_arch}" = "xarmhf" ] ; then
+	case "${deb_distribution}" in
+	debian)
+		case "${deb_codename}" in
+		wheezy)
+			sudo cp ${OIB_DIR}/target/init_scripts/generic-${deb_distribution}.sh ${tempdir}/etc/init.d/generic-boot-script.sh
+			sudo cp ${OIB_DIR}/target/init_scripts/capemgr-${deb_distribution}.sh ${tempdir}/etc/init.d/capemgr.sh
+			sudo cp ${OIB_DIR}/target/init_scripts/capemgr ${tempdir}/etc/default/
+			distro="Debian"
+			;;
+		jessie|stretch)
+			sudo cp ${OIB_DIR}/target/init_scripts/systemd-capemgr.service ${tempdir}/lib/systemd/system/capemgr.service
+			sudo cp ${OIB_DIR}/target/init_scripts/capemgr ${tempdir}/etc/default/
+			distro="Debian"
+			;;
+		esac
+		;;
+	ubuntu)
+		sudo cp ${OIB_DIR}/target/init_scripts/generic-${deb_distribution}.conf ${tempdir}/etc/init/generic-boot-script.conf
+		sudo cp ${OIB_DIR}/target/init_scripts/capemgr-${deb_distribution}.sh ${tempdir}/etc/init/capemgr.sh
+		sudo cp ${OIB_DIR}/target/init_scripts/capemgr ${tempdir}/etc/default/
+		distro="Ubuntu"
 
-	if [ -f ${tempdir}/etc/init/failsafe.conf ] ; then
-		#Ubuntu: with no ethernet cable connected it can take up to 2 mins to login, removing upstart sleep calls..."
-		sudo sed -i -e 's:sleep 20:#sleep 20:g' ${tempdir}/etc/init/failsafe.conf
-		sudo sed -i -e 's:sleep 40:#sleep 40:g' ${tempdir}/etc/init/failsafe.conf
-		sudo sed -i -e 's:sleep 59:#sleep 59:g' ${tempdir}/etc/init/failsafe.conf
+		if [ -f ${tempdir}/etc/init/failsafe.conf ] ; then
+			#Ubuntu: with no ethernet cable connected it can take up to 2 mins to login, removing upstart sleep calls..."
+			sudo sed -i -e 's:sleep 20:#sleep 20:g' ${tempdir}/etc/init/failsafe.conf
+			sudo sed -i -e 's:sleep 40:#sleep 40:g' ${tempdir}/etc/init/failsafe.conf
+			sudo sed -i -e 's:sleep 59:#sleep 59:g' ${tempdir}/etc/init/failsafe.conf
+		fi
+		;;
+	esac
+fi
+
+if [ -d ${tempdir}/usr/share/initramfs-tools/hooks/ ] ; then
+	if [ ! -f ${tempdir}/usr/share/initramfs-tools/hooks/dtbo ] ; then
+		echo "log: adding: [initramfs-tools hook: dtbo]"
+		sudo cp ${OIB_DIR}/target/other/dtbo ${tempdir}/usr/share/initramfs-tools/hooks/
 	fi
-	;;
-esac
+fi
 
 #Backward compatibility, as setup_sdcard.sh expects [lsb_release -si > /etc/rcn-ee.conf]
 echo "distro=${distro}" > /tmp/rcn-ee.conf
@@ -439,6 +464,7 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 	}
 
 	stop_init () {
+		echo "Log: (chroot): setting up: /usr/sbin/policy-rc.d"
 		cat > /usr/sbin/policy-rc.d <<EOF
 		#!/bin/sh
 		exit 101
@@ -466,6 +492,25 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 
 		apt-get update
 		apt-get upgrade -y --force-yes
+
+		if [ "x${chroot_very_small_image}" = "xenable" ] ; then
+			if [ -f /bin/busybox ] ; then
+				echo "Log: (chroot): Setting up BusyBox"
+
+				busybox --install -s /usr/local/bin/
+
+				#conflicts with systemd reboot...
+				if [ -f /usr/local/bin/reboot ] ; then
+					rm -f /usr/local/bin/reboot
+				fi
+
+				#tar: unrecognized option '--warning=no-timestamp'
+				#BusyBox v1.22.1 (Debian 1:1.22.0-9+deb8u1) multi-call binary.
+				if [ -f /usr/local/bin/tar ] ; then
+					rm -f /usr/local/bin/tar
+				fi
+			fi
+		fi
 	}
 
 	install_pkgs () {
@@ -496,8 +541,9 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 	}
 
 	system_tweaks () {
+		echo "Log: (chroot): system_tweaks"
 		echo "[options]" > /etc/e2fsck.conf
-		echo "broken_system_clock = true" >> /etc/e2fsck.conf
+		echo "broken_system_clock = 1" >> /etc/e2fsck.conf
 
 		if [ ! "x${rfs_ssh_banner}" = "x" ] || [ ! "x${rfs_ssh_user_pass}" = "x" ] ; then
 			if [ -f /etc/ssh/sshd_config ] ; then
@@ -507,6 +553,7 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 	}
 
 	set_locale () {
+		echo "Log: (chroot): set_locale"
 		pkg="locales"
 		dpkg_check
 
@@ -546,12 +593,13 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 		# Purge keep file
 		deborphan -Z
 
-		#FIXME, only tested on wheezy...
+		#FIXME, only tested on wheezy/jessie...
 		apt-get -y remove deborphan dialog gettext-base libasprintf0c2 --purge
 		apt-get clean
 	}
 
 	manual_deborphan () {
+		echo "Log: (chroot): manual_deborphan"
 		if [ ! "x${chroot_manual_deborphan_list}" = "x" ] ; then
 			echo "Log: (chroot): cleanup: [${chroot_manual_deborphan_list}]"
 			apt-get -y remove ${chroot_manual_deborphan_list} --purge
@@ -560,6 +608,7 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 	}
 
 	dl_kernel () {
+		echo "Log: (chroot): dl_kernel"
 		wget --no-verbose --directory-prefix=/tmp/ \${kernel_url}
 
 		#This should create a list of files on the server
@@ -612,6 +661,7 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 	}
 
 	add_user () {
+		echo "Log: (chroot): add_user"
 		groupadd -r admin || true
 		groupadd -r spi || true
 
@@ -672,6 +722,7 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 	}
 
 	debian_startup_script () {
+		echo "Log: (chroot): debian_startup_script"
 		if [ "x${rfs_startup_scripts}" = "xenable" ] ; then
 			if [ -f /etc/init.d/generic-boot-script.sh ] ; then
 				chown root:root /etc/init.d/generic-boot-script.sh
@@ -689,6 +740,7 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 	}
 
 	ubuntu_startup_script () {
+		echo "Log: (chroot): ubuntu_startup_script"
 		if [ "x${rfs_startup_scripts}" = "xenable" ] ; then
 			if [ -f /etc/init/generic-boot-script.conf ] ; then
 				chown root:root /etc/init/generic-boot-script.conf
@@ -703,6 +755,7 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 	}
 
 	startup_script () {
+		echo "Log: (chroot): startup_script"
 		case "\${distro}" in
 		Debian)
 			debian_startup_script
@@ -712,13 +765,21 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 			;;
 		esac
 
+		if [ -f /lib/systemd/system/generic-board-startup.service ] ; then
+			systemctl enable generic-board-startup.service || true
+		fi
+
+		if [ -f /lib/systemd/system/capemgr.service ] ; then
+			systemctl enable capemgr.service || true
+		fi
+
 		if [ ! "x${rfs_opt_scripts}" = "x" ] ; then
+			mkdir -p /opt/scripts/ || true
 
 			if [ -f /usr/bin/git ] ; then
-				mkdir -p /opt/scripts/ || true
-				qemu_command="git clone ${rfs_opt_scripts} /opt/scripts/ --depth 1 || true"
+				qemu_command="git clone ${rfs_opt_scripts} /opt/scripts/ --depth 1"
 				qemu_warning
-				git clone ${rfs_opt_scripts} /opt/scripts/ --depth 1 || true
+				git clone -v ${rfs_opt_scripts} /opt/scripts/ --depth 1
 				sync
 				if [ -f /opt/scripts/.git/config ] ; then
 					echo "/opt/scripts/ : ${rfs_opt_scripts}" >> /opt/source/list.txt
@@ -730,6 +791,7 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 	}
 
 	systemd_tweaks () {
+		echo "Log: (chroot): systemd_tweaks"
 		#We have systemd, so lets use it..
 
 		if [ -f /etc/systemd/systemd-journald.conf ] ; then
@@ -751,9 +813,20 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 				apt-get remove -y --force-yes ntpdate --purge || true
 			fi
 		fi
+
+		if [ -f /opt/scripts/mods/jessie-systemd-poweroff.diff ] ; then
+			if [ -f /usr/bin/patch ] ; then
+				if [ -f /lib/udev/rules.d/70-power-switch.rules ] ; then
+					patch -p1 < /opt/scripts/mods/jessie-systemd-poweroff.diff || true
+				else
+					patch -p1 < /opt/scripts/mods/wheezy-systemd-poweroff.diff
+				fi
+			fi
+		fi
 	}
 
 	cleanup () {
+		echo "Log: (chroot): cleanup"
 		mkdir -p /boot/uboot/
 
 		if [ -f /etc/apt/apt.conf ] ; then
@@ -762,11 +835,11 @@ cat > ${DIR}/chroot_script.sh <<-__EOF__
 		apt-get clean
 		rm -rf /var/lib/apt/lists/*
 
-		if [ -d /var/cache/bbx15-ducati-firmware-installer/ ] ; then
-			rm -rf /var/cache/bbx15-ducati-firmware-installer/ || true
+		if [ -d /var/cache/c9-core-installer/ ] ; then
+			rm -rf /var/cache/c9-core-installer/ || true
 		fi
-		if [ -d /var/cache/cloud9-installer/ ] ; then
-			rm -rf /var/cache/cloud9-installer/ || true
+		if [ -d /var/cache/ipumm-dra7xx-installer/ ] ; then
+			rm -rf /var/cache/ipumm-dra7xx-installer/ || true
 		fi
 		if [ -d /var/cache/ti-c6000-cgt-v8.0.x-installer/ ] ; then
 			rm -rf /var/cache/ti-c6000-cgt-v8.0.x-installer/ || true
@@ -874,6 +947,14 @@ chroot_mount
 sudo chroot ${tempdir} /bin/sh -e chroot_script.sh
 echo "Log: Complete: [sudo chroot ${tempdir} /bin/sh -e chroot_script.sh]"
 
+#With the console images, git isn't installed, so we need to patch systemd for shutdown here: (fixed in stretch - udev)
+if [ "x${deb_codename}" = "xwheezy" ] || [ "x${deb_codename}" = "xjessie" ] ; then
+	if [ ! -f ${tempdir}/opt/scripts/mods/jessie-systemd-poweroff.diff ] ; then
+		echo "Log: patching: /lib/udev/rules.d/70-power-switch.rules"
+		sudo cp -v ${DIR}/target/other/systemd-power-switch.rules ${tempdir}/lib/udev/rules.d/70-power-switch.rules
+	fi
+fi
+
 #Do /etc/issue & /etc/issue.net after chroot_script:
 #
 #Unpacking base-files (7.2ubuntu5.1) over (7.2ubuntu5) ...
@@ -891,6 +972,7 @@ echo "Log: Complete: [sudo chroot ${tempdir} /bin/sh -e chroot_script.sh]"
 #*** issue (Y/I/N/O/D/Z) [default=N] ? n
 
 if [ ! "x${rfs_console_banner}" = "x" ] || [ ! "x${rfs_console_user_pass}" = "x" ] ; then
+	echo "Log: setting up: /etc/issue"
 	wfile="/tmp/issue"
 	cat ${tempdir}/etc/issue > ${wfile}
 	if [ ! "x${rfs_etc_dogtag}" = "x" ] ; then
@@ -909,6 +991,7 @@ if [ ! "x${rfs_console_banner}" = "x" ] || [ ! "x${rfs_console_user_pass}" = "x"
 fi
 
 if [ ! "x${rfs_ssh_banner}" = "x" ] || [ ! "x${rfs_ssh_user_pass}" = "x" ] ; then
+	echo "Log: setting up: /etc/issue.net"
 	wfile="/tmp/issue.net"
 	cat ${tempdir}/etc/issue.net > ${wfile}
 	echo "" >> ${wfile}
@@ -929,9 +1012,14 @@ fi
 
 #usually a qemu failure...
 if [ ! "x${rfs_opt_scripts}" = "x" ] ; then
-	if [ ! -f ${tempdir}/opt/scripts/.git/config ] ; then
-		echo "Log: ERROR: git clone of ${rfs_opt_scripts} failed.."
-		exit 1
+	#we might not have read permissions:
+	if [ -r ${tempdir}/opt/scripts/ ] ; then
+		if [ ! -f ${tempdir}/opt/scripts/.git/config ] ; then
+			echo "Log: ERROR: git clone of ${rfs_opt_scripts} failed.."
+			exit 1
+		fi
+	else
+		echo "Log: unable to test /opt/scripts/.git/config no read permissions, assuming git clone success"
 	fi
 fi
 
@@ -974,8 +1062,10 @@ fi
 
 #add /boot/uEnv.txt update script
 if [ -d ${tempdir}/etc/kernel/postinst.d/ ] ; then
-	sudo cp -v ${OIB_DIR}/target/other/zz-uenv_txt ${tempdir}/etc/kernel/postinst.d/
-	sudo chmod +x ${tempdir}/etc/kernel/postinst.d/zz-uenv_txt
+	if [ ! -f ${tempdir}/etc/kernel/postinst.d/zz-uenv_txt ] ; then
+		sudo cp -v ${OIB_DIR}/target/other/zz-uenv_txt ${tempdir}/etc/kernel/postinst.d/
+		sudo chmod +x ${tempdir}/etc/kernel/postinst.d/zz-uenv_txt
+	fi
 fi
 
 if [ -f ${tempdir}/usr/bin/qemu-arm-static ] ; then
@@ -990,15 +1080,6 @@ if [ -d ${tempdir}/etc/ssh/ -a "x${keep_ssh_keys}" = "x" ] ; then
 	#Remove pre-generated ssh keys, these will be regenerated on first bootup...
 	sudo rm -rf ${tempdir}/etc/ssh/ssh_host_* || true
 	sudo touch ${tempdir}/etc/ssh/ssh.regenerate || true
-fi
-
-#extra home, from chroot machine when running npm install xyz:
-unset extra_home
-extra_home=$(ls -lh ${tempdir}/home/ | grep -v ${rfs_username} | awk '{print $9}' | tail -1 || true)
-if [ ! "x${extra_home}" = "x" ] ; then
-	if [ -d ${tempdir}/home/${extra_home}/ ] ; then
-		sudo rm -rf ${tempdir}/home/${extra_home}/ || true
-	fi
 fi
 
 #ID.txt:
@@ -1043,10 +1124,25 @@ fi
 
 sudo chown -R ${USER}:${USER} ${DIR}/deploy/${export_filename}/
 
+keep_alive () {
+	while : ; do
+		sleep 15
+		echo "Log: [x---]: Creating: ${export_filename}.tar"
+		sleep 15
+		echo "Log: [-x--]: Creating: ${export_filename}.tar"
+		sleep 15
+		echo "Log: [--x-]: Creating: ${export_filename}.tar"
+		sleep 15
+		echo "Log: [---x]: Creating: ${export_filename}.tar"
+	done
+}
+
 if [ "x${chroot_tarball}" = "xenable" ] ; then
-	echo "Compressing ${export_filename}"
+	echo "Creating: ${export_filename}.tar"
 	cd ${DIR}/deploy/
+	keep_alive & KEEP_ALIVE_PID=$!
 	tar cvf ${export_filename}.tar ./${export_filename}
+	[ -e /proc/$KEEP_ALIVE_PID ] && sudo kill $KEEP_ALIVE_PID
 	cd ${DIR}/
 fi
 #
