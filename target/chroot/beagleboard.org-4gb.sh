@@ -260,7 +260,8 @@ install_node_pkgs () {
 
 		if [ -f /usr/bin/make ] ; then
 			echo "Installing node-red"
-			TERM=dumb npm install -g node-red --arch=armhf
+			TERM=dumb npm install -g --unsafe-perm node-red --arch=armhf
+			TERM=dumb npm install -g --unsafe-perm node-red-node-beaglebone --arch=armhf
 		fi
 
 		cd /opt/
