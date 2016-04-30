@@ -224,10 +224,10 @@ setup_desktop () {
 		echo "[P2P]" >> ${wfile}
 		echo "Enable=false" >> ${wfile}
 		echo "Tethering=false" >> ${wfile}
-        echo "" >> ${wfile}
-        echo "[Bluetooth]" >> ${wfile}
-        echo "Enable=true" >> ${wfile}
-        echo "Tethering=false" >> ${wfile}
+		echo "" >> ${wfile}
+		echo "[Bluetooth]" >> ${wfile}
+		echo "Enable=true" >> ${wfile}
+		echo "Tethering=false" >> ${wfile}
 	fi
 }
 setup_A2DP () {
@@ -278,7 +278,7 @@ setup_A2DP () {
     #add hci0 to udev rules
     wfile="/etc/udev/rules.d/10-local.rules"
     echo "# Power up bluetooth when hci0 is discovered" > ${wfile}
-    echo "ACTION=="add", KERNEL=="hci0", RUN+="/bin/hciconfig hci0 up"" >> ${wfile}
+    echo "ACTION==\"add\", KERNEL==\"hci0\", RUN+=\"/bin/hciconfig hci0 up\"" >> ${wfile}
     
     #config alsa
     wfile="/etc/asound.conf"
