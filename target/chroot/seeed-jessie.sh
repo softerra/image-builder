@@ -256,11 +256,6 @@ setup_A2DP () {
     # echo "  type pulse" >> ${wfile}
     # echo "  fallback "sysdefault"" >> ${wfile}
     # echo "}" >> ${wfile}
-<<<<<<< HEAD
-    wfile="/boot/uEnv.txt"
-    sed -i '2a dtb=am335x-bonegreen-wireless.dtb' ${wfile}
-=======
->>>>>>> 5075a1b4d168d7ff1b5bae90d4f8772a90cea709
 }
 install_pip_pkgs () {
 	if [ -f /usr/bin/python ] ; then
