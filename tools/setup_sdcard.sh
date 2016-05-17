@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2015 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
 # Copyright (c) 2010 Mario Di Francesco <mdf-code@digitalexile.it>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -250,6 +250,35 @@ dl_bootloader () {
 	else
 		unset UBOOT
 	fi
+
+	if [ "x${oem_blank_eeprom}" = "xenable" ] ; then
+		if [ "x${conf_board}" = "xbeagle_x15" ] ; then
+			unset oem_blank_eeprom
+		fi
+	fi
+
+	if [ "x${oem_blank_eeprom}" = "xenable" ] ; then
+		ABI="ABI2"
+		conf_board="am335x_boneblack"
+
+		if [ "${spl_name}" ] ; then
+			blank_SPL=$(cat ${TEMPDIR}/dl/${conf_bl_listfile} | grep "${ABI}:${conf_board}:SPL" | awk '{print $2}')
+			${dl_quiet} --directory-prefix="${TEMPDIR}/dl/" ${blank_SPL}
+			blank_SPL=${blank_SPL##*/}
+			echo "blank_SPL Bootloader: ${blank_SPL}"
+		else
+			unset blank_SPL
+		fi
+
+		if [ "${boot_name}" ] ; then
+			blank_UBOOT=$(cat ${TEMPDIR}/dl/${conf_bl_listfile} | grep "${ABI}:${conf_board}:BOOT" | awk '{print $2}')
+			${dl} --directory-prefix="${TEMPDIR}/dl/" ${blank_UBOOT}
+			blank_UBOOT=${blank_UBOOT##*/}
+			echo "blank_UBOOT Bootloader: ${blank_UBOOT}"
+		else
+			unset blank_UBOOT
+		fi
+	fi
 }
 
 generate_soc () {
@@ -443,9 +472,15 @@ dd_uboot_boot () {
 		dd_uboot="${dd_uboot}bs=${dd_uboot_bs}"
 	fi
 
-	echo "${uboot_name}: dd if=${uboot_name} of=${media} ${dd_uboot}"
+	if [ "x${oem_blank_eeprom}" = "xenable" ] ; then
+		uboot_blob="${blank_UBOOT}"
+	else
+		uboot_blob="${UBOOT}"
+	fi
+
+	echo "${uboot_name}: dd if=${uboot_blob} of=${media} ${dd_uboot}"
 	echo "-----------------------------"
-	dd if=${TEMPDIR}/dl/${UBOOT} of=${media} ${dd_uboot}
+	dd if=${TEMPDIR}/dl/${uboot_blob} of=${media} ${dd_uboot}
 	echo "-----------------------------"
 }
 
@@ -471,9 +506,15 @@ dd_spl_uboot_boot () {
 		dd_spl_uboot="${dd_spl_uboot}bs=${dd_spl_uboot_bs}"
 	fi
 
-	echo "${spl_uboot_name}: dd if=${spl_uboot_name} of=${media} ${dd_spl_uboot}"
+	if [ "x${oem_blank_eeprom}" = "xenable" ] ; then
+		spl_uboot_blob="${blank_SPL}"
+	else
+		spl_uboot_blob="${SPL}"
+	fi
+
+	echo "${spl_uboot_name}: dd if=${spl_uboot_blob} of=${media} ${dd_spl_uboot}"
 	echo "-----------------------------"
-	dd if=${TEMPDIR}/dl/${SPL} of=${media} ${dd_spl_uboot}
+	dd if=${TEMPDIR}/dl/${spl_uboot_blob} of=${media} ${dd_spl_uboot}
 	echo "-----------------------------"
 }
 
@@ -1087,7 +1128,7 @@ populate_rootfs () {
 		cmdline="${cmdline} init=/lib/systemd/systemd"
 	fi
 
-	if [ "x${conf_board}" = "xam335x_boneblack" ] || [ "x${conf_board}" = "xam335x_evm" ] ; then
+	if [ "x${enable_cape_universal}" = "xenable" ] ; then
 		cmdline="${cmdline} cape_universal=enable"
 	fi
 
@@ -1132,6 +1173,9 @@ populate_rootfs () {
 		elif [ "x${bbg_flasher}" = "xenable" ] ; then
 			echo "##enable BBG: eMMC Flasher:" >> ${wfile}
 			echo "cmdline=init=/opt/scripts/tools/eMMC/init-eMMC-flasher-v3-bbg.sh" >> ${wfile}
+		elif [ "x${bbgw_flasher}" = "xenable" ] ; then
+			echo "##enable BBG: eMMC Flasher:" >> ${wfile}
+			echo "cmdline=init=/opt/scripts/tools/eMMC/init-eMMC-flasher-v3-bbgw.sh" >> ${wfile}
 		elif [ "x${a335_flasher}" = "xenable" ] ; then
 			echo "##enable a335: eeprom Flasher:" >> ${wfile}
 			echo "cmdline=init=/opt/scripts/tools/eMMC/init-eMMC-flasher-a335.sh" >> ${wfile}
@@ -1209,61 +1253,63 @@ populate_rootfs () {
 			echo "exec /sbin/getty 115200 ${SERIAL}" >> ${wfile}
 		fi
 
-		wfile="${TEMPDIR}/disk/etc/network/interfaces"
-		echo "# This file describes the network interfaces available on your system" > ${wfile}
-		echo "# and how to activate them. For more information, see interfaces(5)." >> ${wfile}
-		echo "" >> ${wfile}
-		echo "# The loopback network interface" >> ${wfile}
-		echo "auto lo" >> ${wfile}
-		echo "iface lo inet loopback" >> ${wfile}
-		echo "" >> ${wfile}
-		echo "# The primary network interface" >> ${wfile}
+		if [ "x${DISABLE_ETH}" != "xskip" ] ; then
+			wfile="${TEMPDIR}/disk/etc/network/interfaces"
+			echo "# This file describes the network interfaces available on your system" > ${wfile}
+			echo "# and how to activate them. For more information, see interfaces(5)." >> ${wfile}
+			echo "" >> ${wfile}
+			echo "# The loopback network interface" >> ${wfile}
+			echo "auto lo" >> ${wfile}
+			echo "iface lo inet loopback" >> ${wfile}
+			echo "" >> ${wfile}
+			echo "# The primary network interface" >> ${wfile}
 
-		if [ "${DISABLE_ETH}" ] ; then
-			echo "#auto eth0" >> ${wfile}
-			echo "#iface eth0 inet dhcp" >> ${wfile}
-		else
-			echo "auto eth0"  >> ${wfile}
-			echo "iface eth0 inet dhcp" >> ${wfile}
-		fi
+			if [ "${DISABLE_ETH}" ] ; then
+				echo "#auto eth0" >> ${wfile}
+				echo "#iface eth0 inet dhcp" >> ${wfile}
+			else
+				echo "auto eth0"  >> ${wfile}
+				echo "iface eth0 inet dhcp" >> ${wfile}
+			fi
 
-		#if we have systemd & wicd-gtk, disable eth0 in /etc/network/interfaces
-		if [ -f ${TEMPDIR}/disk/lib/systemd/systemd ] ; then
-			if [ -f ${TEMPDIR}/disk/usr/bin/wicd-gtk ] ; then
+			#if we have systemd & wicd-gtk, disable eth0 in /etc/network/interfaces
+			if [ -f ${TEMPDIR}/disk/lib/systemd/systemd ] ; then
+				if [ -f ${TEMPDIR}/disk/usr/bin/wicd-gtk ] ; then
+					sed -i 's/auto eth0/#auto eth0/g' ${wfile}
+					sed -i 's/allow-hotplug eth0/#allow-hotplug eth0/g' ${wfile}
+					sed -i 's/iface eth0 inet dhcp/#iface eth0 inet dhcp/g' ${wfile}
+				fi
+			fi
+
+			#if we have connman, disable eth0 in /etc/network/interfaces
+			if [ -f ${TEMPDIR}/disk/etc/init.d/connman ] ; then
 				sed -i 's/auto eth0/#auto eth0/g' ${wfile}
 				sed -i 's/allow-hotplug eth0/#allow-hotplug eth0/g' ${wfile}
 				sed -i 's/iface eth0 inet dhcp/#iface eth0 inet dhcp/g' ${wfile}
 			fi
+
+			echo "# Example to keep MAC address between reboots" >> ${wfile}
+			echo "#hwaddress ether DE:AD:BE:EF:CA:FE" >> ${wfile}
+
+			echo "" >> ${wfile}
+			echo "# The secondary network interface" >> ${wfile}
+			echo "#auto eth1" >> ${wfile}
+			echo "#iface eth1 inet dhcp" >> ${wfile}
+
+			echo "" >> ${wfile}
+
+			echo "# WiFi use: -> connmanctl" >> ${wfile}
+
+			echo "" >> ${wfile}
+
+			echo "# Ethernet/RNDIS gadget (g_ether)" >> ${wfile}
+			echo "# Used by: /opt/scripts/boot/autoconfigure_usb0.sh" >> ${wfile}
+			echo "iface usb0 inet static" >> ${wfile}
+			echo "    address 192.168.7.2" >> ${wfile}
+			echo "    netmask 255.255.255.252" >> ${wfile}
+			echo "    network 192.168.7.0" >> ${wfile}
+			echo "    gateway 192.168.7.1" >> ${wfile}
 		fi
-
-		#if we have connman, disable eth0 in /etc/network/interfaces
-		if [ -f ${TEMPDIR}/disk/etc/init.d/connman ] ; then
-			sed -i 's/auto eth0/#auto eth0/g' ${wfile}
-			sed -i 's/allow-hotplug eth0/#allow-hotplug eth0/g' ${wfile}
-			sed -i 's/iface eth0 inet dhcp/#iface eth0 inet dhcp/g' ${wfile}
-		fi
-
-		echo "# Example to keep MAC address between reboots" >> ${wfile}
-		echo "#hwaddress ether DE:AD:BE:EF:CA:FE" >> ${wfile}
-
-		echo "" >> ${wfile}
-		echo "# The secondary network interface" >> ${wfile}
-		echo "#auto eth1" >> ${wfile}
-		echo "#iface eth1 inet dhcp" >> ${wfile}
-
-		echo "" >> ${wfile}
-
-		echo "# WiFi use: -> connmanctl" >> ${wfile}
-
-		echo "" >> ${wfile}
-
-		echo "# Ethernet/RNDIS gadget (g_ether)" >> ${wfile}
-		echo "# Used by: /opt/scripts/boot/autoconfigure_usb0.sh" >> ${wfile}
-		echo "iface usb0 inet static" >> ${wfile}
-		echo "    address 192.168.7.2" >> ${wfile}
-		echo "    netmask 255.255.255.252" >> ${wfile}
-		echo "    network 192.168.7.0" >> ${wfile}
-		echo "    gateway 192.168.7.1" >> ${wfile}
 
 		if [ -f ${TEMPDIR}/disk/var/www/index.html ] ; then
 			rm -f ${TEMPDIR}/disk/var/www/index.html || true
@@ -1311,6 +1357,11 @@ populate_rootfs () {
 
 	if [ ! -f ${TEMPDIR}/disk/opt/scripts/boot/generic-startup.sh ] ; then
 		git clone https://github.com/RobertCNelson/boot-scripts ${TEMPDIR}/disk/opt/scripts/ --depth 1
+		sudo chown -R 1000:1000 ${TEMPDIR}/disk/opt/scripts/
+	else
+		cd ${TEMPDIR}/disk/opt/scripts/
+		git pull
+		cd -
 		sudo chown -R 1000:1000 ${TEMPDIR}/disk/opt/scripts/
 	fi
 
@@ -1622,15 +1673,23 @@ while [ ! -z "$1" ] ; do
 		USE_BETA_BOOTLOADER=1
 		;;
 	--a335-flasher)
+		oem_blank_eeprom="enable"
 		a335_flasher="enable"
 		;;
 	--bbg-flasher)
+		oem_blank_eeprom="enable"
 		bbg_flasher="enable"
 		;;
+	--bbgw-flasher)
+		oem_blank_eeprom="enable"
+		bbgw_flasher="enable"
+		;;
 	--bbb-usb-flasher|--usb-flasher|--oem-flasher)
+		oem_blank_eeprom="enable"
 		usb_flasher="enable"
 		;;
 	--bbb-flasher|--emmc-flasher)
+		oem_blank_eeprom="enable"
 		emmc_flasher="enable"
 		;;
 	--bbb-old-bootloader-in-emmc)
@@ -1654,6 +1713,9 @@ while [ ! -z "$1" ] ; do
 		;;
 	--enable-systemd)
 		enable_systemd="enabled"
+		;;
+	--enable-cape-universal)
+		enable_cape_universal="enable"
 		;;
 	--offline)
 		offline=1

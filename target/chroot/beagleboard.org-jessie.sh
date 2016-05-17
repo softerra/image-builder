@@ -191,44 +191,6 @@ setup_desktop () {
 		chmod u+s /bin/ping /bin/ping6
 	    fi
 	fi
-
-	if [ -f /etc/init.d/connman ] ; then
-		mkdir -p /etc/connman/ || true
-		wfile="/etc/connman/main.conf"
-		echo "[General]" > ${wfile}
-		echo "PreferredTechnologies=ethernet,wifi" >> ${wfile}
-		echo "SingleConnectedTechnology=false" >> ${wfile}
-		echo "AllowHostnameUpdates=false" >> ${wfile}
-		echo "PersistentTetheringMode=true" >> ${wfile}
-		echo "NetworkInterfaceBlacklist=usb0,SoftAp0" >> ${wfile}
-
-		mkdir -p /var/lib/connman/ || true
-		wfile="/var/lib/connman/settings"
-		echo "[global]" > ${wfile}
-		echo "OfflineMode=false" >> ${wfile}
-		echo "" >> ${wfile}
-		echo "[Wired]" >> ${wfile}
-		echo "Enable=true" >> ${wfile}
-		echo "Tethering=false" >> ${wfile}
-		echo "" >> ${wfile}
-		echo "[WiFi]" >> ${wfile}
-		echo "Enable=true" >> ${wfile}
-		echo "Tethering=true" >> ${wfile}
-		echo "Tethering.Identifier=BeagleBone" >> ${wfile}
-		echo "Tethering.Passphrase=BeagleBone" >> ${wfile}
-		echo "" >> ${wfile}
-		echo "[Gadget]" >> ${wfile}
-		echo "Enable=false" >> ${wfile}
-		echo "Tethering=false" >> ${wfile}
-		echo "" >> ${wfile}
-		echo "[P2P]" >> ${wfile}
-		echo "Enable=false" >> ${wfile}
-		echo "Tethering=false" >> ${wfile}
-		echo "" >> ${wfile}
-		echo "[Bluetooth]" >> ${wfile}
-		echo "Enable=true" >> ${wfile}
-		echo "Tethering=false" >> ${wfile}
-	fi
 }
 
 install_pip_pkgs () {
@@ -260,48 +222,6 @@ install_pip_pkgs () {
 
 install_git_repos () {
 	if [ -f /usr/bin/jekyll ] ; then
-		git_repo="https://github.com/beagleboard/bone101"
-		git_target_dir="/var/lib/cloud9"
-
-		if [ "x${bone101_git_sha}" = "x" ] ; then
-			git_clone
-		else
-			git_clone_full
-		fi
-
-		if [ -f ${git_target_dir}/.git/config ] ; then
-			chown -R ${rfs_username}:${rfs_username} ${git_target_dir}
-			cd ${git_target_dir}/
-
-			if [ ! "x${bone101_git_sha}" = "x" ] ; then
-				git checkout ${bone101_git_sha} -b tmp-production
-			fi
-
-			echo "jekyll pre-building bone101"
-			/usr/bin/jekyll build --destination bone101
-		fi
-
-		wfile="/lib/systemd/system/jekyll-autorun.service"
-		echo "[Unit]" > ${wfile}
-		echo "Description=jekyll autorun" >> ${wfile}
-		echo "ConditionPathExists=|/var/lib/cloud9" >> ${wfile}
-		echo "" >> ${wfile}
-		echo "[Service]" >> ${wfile}
-		echo "WorkingDirectory=/var/lib/cloud9" >> ${wfile}
-#debian: jekyll 2.2.0 doesn't support --incremental, i'll add this back when i get 3.0.1 working..
-#		echo "ExecStart=/usr/bin/jekyll build --destination bone101 --watch --incremental" >> ${wfile}
-		echo "ExecStart=/usr/bin/jekyll build --destination bone101 --watch" >> ${wfile}
-		echo "SyslogIdentifier=jekyll-autorun" >> ${wfile}
-		echo "CPUAccounting=true" >> ${wfile}
-		echo "CPUQuota=10%" >> ${wfile}
-		echo "MemoryAccounting=true" >> ${wfile}
-		echo "MemoryLimit=50M" >> ${wfile}
-		echo "" >> ${wfile}
-		echo "[Install]" >> ${wfile}
-		echo "WantedBy=multi-user.target" >> ${wfile}
-
-		systemctl enable jekyll-autorun.service || true
-
 		if [ -d /etc/apache2/ ] ; then
 			#bone101 takes over port 80, so shove apache/etc to 8080:
 			if [ -f /etc/apache2/ports.conf ] ; then
@@ -380,10 +300,12 @@ install_git_repos () {
 			is_kernel=$(echo ${repo_rcnee_pkg_version} | grep 3.8.13 || true)
 			if [ "x${is_kernel}" = "x" ] ; then
 				if [ -f /usr/bin/make ] ; then
-					make
-					make install
+					if [ ! -f /lib/firmware/BB-ADC-00A0.dtbo ] ; then
+						make
+						make install
+						make clean
+					fi
 					update-initramfs -u -k ${repo_rcnee_pkg_version}
-					make clean
 				fi
 			fi
 		fi
@@ -406,6 +328,18 @@ install_git_repos () {
 		git_repo="git://git.ti.com/pru-software-support-package/pru-software-support-package.git"
 		git_target_dir="/opt/source/pru-software-support-package"
 		git_clone
+	fi
+
+	#beagle-tester
+	git_repo="https://github.com/jadonk/beagle-tester"
+	git_target_dir="/opt/source/beagle-tester"
+	git_clone
+	if [ -f ${git_target_dir}/.git/config ] ; then
+		cd ${git_target_dir}/
+		if [ -f /usr/bin/make ] ; then
+			make
+			make install
+		fi
 	fi
 }
 
