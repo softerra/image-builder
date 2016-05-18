@@ -66,22 +66,22 @@ echo "pid: [${KEEP_NET_ALIVE_PID}]"
 # Next BeagleBone image
 ##Debian 8:
 #image_name="${deb_distribution}-${release}-${image_type}-${deb_arch}-${time}"
-image_name="debian-8.4-iot-armhf-${time}"
-size="2gb"
-options="--img-2gb bone-${image_name} --dtb beaglebone \
---bbb-old-bootloader-in-emmc --hostname beaglebone --enable-cape-universal"
-./RootStock-NG.sh -c bb.org-debian-jessie-iot-v4.4
-build_and_upload_image
+#image_name="debian-8.4-iot-armhf-${time}"
+#size="2gb"
+#options="--img-2gb bone-${image_name} --dtb beaglebone \
+#--bbb-old-bootloader-in-emmc --hostname beaglebone --enable-cape-universal"
+#./RootStock-NG.sh -c bb.org-debian-jessie-iot-v4.4
+#build_and_upload_image
 
 # Next BeagleBone image
 ##Debian 8:
 #image_name="${deb_distribution}-${release}-${image_type}-${deb_arch}-${time}"
-image_name="debian-8.4-lxqt-4gb-armhf-${time}"
-size="4gb"
-options="--img-4gb bone-${image_name} --dtb beaglebone \
---bbb-old-bootloader-in-emmc --hostname beaglebone --enable-cape-universal"
-./RootStock-NG.sh -c bb.org-debian-jessie-lxqt-4gb-v4.4
-build_and_upload_image
+#image_name="debian-8.4-lxqt-4gb-armhf-${time}"
+#size="4gb"
+#options="--img-4gb bone-${image_name} --dtb beaglebone \
+#--bbb-old-bootloader-in-emmc --hostname beaglebone --enable-cape-universal"
+#./RootStock-NG.sh -c bb.org-debian-jessie-lxqt-4gb-v4.4
+#build_and_upload_image
 
 #seeed iot image
 image_name="debian-8.4-seeed-iot-armhf-${time}"
