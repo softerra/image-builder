@@ -1,6 +1,6 @@
 #!/usr/bin/env groovy
 
-def initialGitRevision = 'e841399' // merge before: tag v2017.05
+def initialGitRevision = '260d0ea' // first iotcrafter commit after fork from tag v2017.05
 def workerJob = 'oprog-img-bbb-build'
 
 def configList = [''] // '' - is default config (iotcrafter-debian-jessie-v4.4)
