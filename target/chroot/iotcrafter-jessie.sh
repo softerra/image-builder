@@ -474,6 +474,12 @@ other_source_links
 npm config set unsafe-perm true
 npm install bower -g
 
+# add own repo
+# TODO: add repo key
+cat > /etc/apt/sources.list.d/iotcrafter.list <<EOF
+deb [arch=all,armhf] http://iotcrafter.com:8888/iotc/bbb jessie main
+EOF
+
 apt-get -y update
 
 echo iotc iotc/cpuid string BBB | debconf-set-selections
