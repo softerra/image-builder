@@ -1,0 +1,145 @@
+=======================
+Iotcrafter Docker Build
+=======================
+* in a docker container (based on oprog-timer/cross-build-armv7l:stretch, which is based on debian:stretch)
+* based on iotcrafter's pi-gen docker build
+* initiated by running build-docker-iotcrafter.sh
+	- build/update docker image
+	- in the container
+		- run build.sh
+		- get RC code
+		- run postbuild.sh with the RC code
+*** build.sh
+	- patch image-builder chroot.sh (workaround for hanging 'git clone' in QEMU)
+	- create iotcrafter-specific hook for chroot.sh (copy our DT overlays)
+	- build image in standard way with ./RootStock-NG.sh + iotcrafter config
+	- prepare image wraping script
+	- create iotcrafter-specific hook for setup_sdcard.sh (patch uEnv.txt)
+	- run image wraping script
+
+*** postbuild.sh
+	- saves RC code so build-docker-iotcrafter.sh can analyze it
+	- restore ownership of produced files (they are created in the container by root)
+	- clean up possible hanging mounts and /dev/mapper/loop* devices in case build fails before cleanup
+
+Iotcrafter build parts
+----------------------
+M /scripts/chroot.sh					- allow unsigned external repo
+M /scripts/install_dependencies.sh		- remove code disabling QEMU
+M /tools/setup_sdcard.sh				- workaround for auto-created loop devices, _populate_after_hook
+A /configs/								- iotcrafter config
+A /iotcrafter/							- Docker, Jenkins and iotcrafter build scripts
+A /scripts/igcw.sh						- Iotcrafter git clone workaround (patch chroot.sh, redirect git clone from QEMU to HOST environment)
+A /target/chroot/iotcrafter_jessie.sh	- iotcrafter chroot installation script for jessie
+
+Build flow (iotcrafter specific build steps are marked [IOTC])
+--------------------------------------------------------------
+build-docker-iotcrafter.sh
+	- build docker image as need
+	- run build sequence in a docker container
+		- reconfiguration of qemu package
+		- build.sh
+			- prepare chroot_after_hook:
+				- [IOTC] will copy our overlays *.dtbo to rootfs
+
+			- patch image-builder scripts for git clone workaround
+			- call RootStock-NG.sh with iotcrafter config
+				- /scripts/install_dependencies.sh
+				- /scripts/debootstrap.sh
+				- /scripts/chroot.sh
+					- debootstrap second stage
+					- repos setup
+						- [IOTC] ${repo_external} - setup iotcrafter software repo
+						- ${repo_nodesource}
+						- ${repo_rcnee}
+					- prepare chroot_script.sh
+						- will apt update, upgrade, dist-upgrade, install ${deb_additional_pkgs}, ${repo_external_pkg_list}
+						- install kernel
+						- setup system: locale, user, startup scripts, etc
+						- remove self
+					- call ${early_chroot_script}
+					- call CHROOT chroot_script.sh
+					- call ${chroot_before_hook}
+					- [IOTC] call ${chroot_script} --> target/chroot/iotcrafter_jessie.sh
+						- [IOTC] npm config set unsafe-perm true
+						- [IOTC] npm install bower -g
+						- [IOTC] install iotc-core (pass params BBB, kernel version)
+						- [IOTC] reconf unattended-upgrades
+						- [IOTC] install iotc-ide
+						- [IOTC] donwload iotc_init.sh, configure it and install
+
+					- call ${chroot_after_hook}
+						- [IOTC] copy our overlays *.dtbo to rootfs
+					- prepare cleanup_script.sh
+						- will perform cleanup and remove itself
+					- call cleanup_script.sh
+					- copy setup_sdcard.sh to the deploy dir
+
+			- revert patch of image-builder scripts
+
+			- prepare a script for wraping result image
+			- prepare a hook (setup_sdcard_populate_after_hook) for the final image making script setup_sdcard.sh
+				- [IOTC] will edit the final uEnv.txt
+			- call the script wraping result image (gift_wrap_final_images.sh)
+				- copy setup_sdcard_populate_after_hook to the dir of setup_sdcard.sh
+				- call setup_sdcard.sh with options
+					- create image file
+					- create partitions in the image file
+					- populate boot
+					- populate rootfs
+						- [IOTC] call the hook - edit uEnv.txt: insert init=..iotc_init.sh
+
+		- get RC of the build and handle it to postbuild.sh script
+			- get RC and save it to build_rc file
+			- fix permissions to result 'deploy' dir
+			- cleanup possible hanging mounts and loop devices
+	- get RC from the build_rc file and return it
+
+==========================
+Automatic build by Jenkins
+==========================
+
+------------
+Image naming
+------------
+* Release
+YYYY-MM-DD-vYYYY.MM.N.bone-debdist-iotcrafter.img
+* Current
+YYYY-MM-DD-vYYYY.MM.N.bone-N-g<abbrev>-debdist-iotcrafter.img	- offset from release
+YYYY-MM-DD-rc.<comment>.bone-g<abbrev>-debdist-iotcrafter.img	- commented release candidate
+YYYY-MM-DD-bone-g<abbrev>-debdist-iotcrafter.img				- general name
+
+* YYYY-MM-DD-vYYYY.MM.N.bone:
+	** explicitely assigned tag to our release
+	** consists of release date and
+	respective tag of the release of Bone Debian (vYYYY.MM.N) our release is based on
+* YYYY-MM-DD - date of the commit, abbrev - is commit abbrev (used when git desribe --tags fails)
+* debdist - is jessie,strecth,etc
+* -iotcrafter - suffix
+
+Jenkins build is organized by two jobs:
+	Jenkinsfile.rev -
+		master josb which determines revision/revisions to be built and
+		runs the slave job for every one revision picked out
+		- list tags 'YYYY-MM-DD-*' since the last release =>  list of 'release' revisions to build
+		- determine whether HEAD is 'release'(tagged appropriately), if not - 'current' revision to build
+		- determine name of HEAD revision as
+			- <YYYY-MM-DD-*tag.bone>					by 'git describe --tags' (assume tags are YYYY-MM-DD-*)
+			- <YYYY-MM-DD-*tag.bone>-N-g<commit>		by 'git describe --tags'
+			- YYYY-MM-DD-rc.<comment>.bone-g<commit>	by git log if comment looks like RC: <comment> ...
+			- YYYY-MM-DD-bone-g<commit>					by git log if comment is other
+	Jenkinsfile.build -
+		slave/worker job which actually performs the build of a revision
+			- gets params from master job (repo, revision to build etc)
+			- runs iotcrafter/build-docker-iotcrafter.sh
+			- copies result images to pre-defined dirs:
+				- 'release' => deploy[base]/CURDATE/YYYY-MM-DD-XX...XX-iotcrafter.zip
+							=> deploy[base]/CURDATE/bbb.img.zip (for old installer)
+				- 'current' => deploy[base]/current/CURDATE/YYYY-MM-DD-XX...XX-iotcrafter.zip
+
+Jenkins setup:
+* Create a pipeline for Jenkinsfile.rev
+* Create a pipeline for Jenkinsfile.build - !!! the name of the job should be
+	equal to the name defined in Jenkinsfile.rev by workerJob variable
+
+NOTE: the jobs require a number of access approvals

@@ -1,0 +1,35 @@
+ARG DEB_DISTRO=jessie
+FROM local/cross-build-armv7l:$DEB_DISTRO
+
+ARG DEB_DISTRO
+
+ENV DEBIAN_FRONTEND noninteractive
+
+# need for pi-gen
+RUN apt-get -y update && \
+	apt-get -y install \
+		git vim parted \
+		quilt realpath qemu-user-static debootstrap zerofree pxz zip dosfstools \
+		bsdtar libcap2-bin rsync grep udev xz-utils curl xxd
+
+# need for pi-gen running in jessie container
+RUN if [ "$DEB_DISTRO" = "jessie" ]; then \
+		sed -i '1 i\\
+deb http://deb.debian.org/debian jessie-backports main\
+' /etc/apt/sources.list \
+		&& apt-get update \
+		&& apt-get install -y e2fslibs=1.43.3* e2fsprogs=1.43.3* \
+		&& sed -i '1 d' /etc/apt/sources.list; \
+	fi
+
+# need for kernel build (pi-gen kernel update)
+RUN apt-get -y install \
+		fakeroot build-essential ncurses-dev libssl-dev bc kmod
+
+# need for BBB image-builder
+RUN apt-get -y install \
+		sudo netcat-openbsd qemu \
+		dosfstools git-core kpartx wget parted \
+	&& rm -rf /var/lib/apt/lists/*
+
+VOLUME [ "/image-builder/ignore" ]

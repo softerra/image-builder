@@ -715,9 +715,43 @@ create_partitions () {
 		if [ -e /dev/mapper/${test_loop}p${media_boot_partition} ] && [ -e /dev/mapper/${test_loop}p${media_rootfs_partition} ] ; then
 			media_prefix="/dev/mapper/${test_loop}p"
 		else
-			ls -lh /dev/mapper/
-			echo "Error: not sure what to do (new feature)."
-			exit
+			# if run in a docker container try creating devices manually
+			cont_name=$(cat /proc/1/cgroup | head -n1 | cut -d ':' -f3 | \
+						sed -n 's/\/\([[:alpha:]]*\)\/.*/\1/ p')
+			if [ "$cont_name" = "lxc" -o "$cont_name" = "docker" ]; then
+				echo "Running in $cont_name container"
+
+				mkdir -p tmpdev
+				mount -t devtmpfs none tmpdev
+				if [ -e tmpdev/mapper/${test_loop}p${media_boot_partition} ] && [ -e tmpdev/mapper/${test_loop}p${media_rootfs_partition} ] ; then
+					parts=${test_loop}p${media_boot_partition}
+					if [ "${media_boot_partition}" != "${media_rootfs_partition}" ]; then
+						parts="${parts} ${test_loop}p${media_rootfs_partition}"
+					fi
+					for part in $parts; do
+						dm_link=$(stat -c %N tmpdev/mapper/${part} | cut -f 3 -d ' ' | sed "s/'//g")
+						dm_name=$(basename $dm_link)
+						node_create=$(stat -L -c "-m %a /dev/${dm_name} b 0x%t 0x%T" tmpdev/mapper/${part})
+						mknod $node_create || echo "Error creating ${dm_name} device node"
+						ln -sf $dm_link /dev/mapper/${part}
+					done
+				fi
+				umount tmpdev
+				rmdir tmpdev
+
+				if [ -e /dev/mapper/${test_loop}p${media_boot_partition} ] && [ -e /dev/mapper/${test_loop}p${media_rootfs_partition} ] ; then
+					media_prefix="/dev/mapper/${test_loop}p"
+					echo "/dev/mapper/ device(s) and link(s) created OK"
+				else
+					ls -lh tmpdev/mapper/
+					echo "Error: still not sure what to do."
+					exit
+				fi
+			else
+				ls -lh /dev/mapper/
+				echo "Error: not sure what to do (new feature)."
+				exit
+			fi
 		fi
 	else
 		partprobe ${media}
@@ -873,6 +907,10 @@ populate_boot () {
 			cp -v "${DIR}/uEnv.txt" ${TEMPDIR}/disk/uEnv.txt
 			echo "-----------------------------"
 		fi
+	fi
+
+	if [ -r ${DIR}/setup_sdcard_populate_after_hook ]; then
+		. ${DIR}/setup_sdcard_populate_after_hook
 	fi
 
 	cd ${TEMPDIR}/disk
@@ -1598,6 +1636,10 @@ populate_rootfs () {
 	if [ -x  ${TEMPDIR}/disk/bin/ping ] ; then
 		echo "making ping/ping6 setuid root"
 		chmod u+s ${TEMPDIR}/disk//bin/ping ${TEMPDIR}/disk//bin/ping6
+	fi
+
+	if [ -r ${DIR}/setup_sdcard_populate_after_hook ]; then
+		. ${DIR}/setup_sdcard_populate_after_hook
 	fi
 
 	cd ${TEMPDIR}/disk/

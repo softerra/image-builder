@@ -1,0 +1,100 @@
+#!/bin/bash -e
+
+BUILD_SYS="image-builder"
+DOCKER_IMG="${BUILD_SYS}-iotcrafter"
+DOCKER_IMG_TAG="stretch"
+DOCKER="docker"
+DOCKER_CONTAINER_SUFFIX=${1:-iotc}
+set +e
+$DOCKER ps >/dev/null 2>&1
+if [ $? != 0 ]; then
+	DOCKER="sudo docker"
+fi
+if ! $DOCKER ps >/dev/null; then
+	echo "error connecting to docker:"
+	$DOCKER ps
+	exit 1
+fi
+set -e
+
+cd $(cd $(dirname $0); pwd)/..
+
+if [ -f config ]; then
+	source config
+fi
+
+if [ -z "${IMG_NAME}" ]; then
+	echo "IMG_NAME not set in 'config', build default" 1>&2
+	IMG_NAME=iotcrafter-debian-jessie-v4.4
+fi
+
+echo "Building docker image as need.."
+$DOCKER build \
+	--build-arg DEB_DISTRO=$DOCKER_IMG_TAG \
+	-t "$DOCKER_IMG:$DOCKER_IMG_TAG" \
+	-f iotcrafter/Dockerfile.iotcrafter iotcrafter/
+$DOCKER rmi $(docker images -f "dangling=true" -q) || true
+
+CONTAINER_NAME="${BUILD_SYS}_${DOCKER_CONTAINER_SUFFIX}_work"
+CONTAINER_EXISTS=$($DOCKER ps -a --filter name="$CONTAINER_NAME" -q)
+CONTAINER_RUNNING=$($DOCKER ps --filter name="$CONTAINER_NAME" -q)
+
+if [ "$CONTAINER_RUNNING" != "" ]; then
+	echo "The build is already running in container $CONTAINER_NAME. Aborting."
+	exit 1
+fi
+
+mkdir -p ignore
+buildCommand="dpkg-reconfigure qemu-user-static && ./iotcrafter/build.sh; \
+				BUILD_RC=\$?; \
+				iotcrafter/postbuild.sh \$BUILD_RC"
+
+# TODO: consider supporting 'continue'
+CONTINUE=0
+if [ "$CONTAINER_EXISTS" != "" ] && [ "$CONTINUE" = "1" ]; then
+	echo "Continue $CONTAINER_NAME => ${CONTAINER_NAME}_cont"
+
+	trap "echo 'got CTRL+C... please wait 5s';docker stop -t 5 ${CONTAINER_NAME}_cont" SIGINT SIGTERM
+	time $DOCKER run --privileged \
+		--volumes-from="${CONTAINER_NAME}" \
+		--name "${CONTAINER_NAME}_cont" \
+		-e IMG_NAME=${IMG_NAME} \
+		${kernelMount} \
+		-v "$(pwd):/${BUILD_SYS}" -w "/${BUILD_SYS}" \
+		$DOCKER_IMG:$DOCKER_IMG_TAG \
+		bash -o pipefail -c "${buildCommand}" &
+	wait
+
+	# remove old container and rename this to usual name
+	echo "Removing old container"
+	$DOCKER container rm -v $CONTAINER_NAME
+	echo "Renaming ${CONTAINER_NAME}_cont => ${CONTAINER_NAME}"
+	$DOCKER container rename ${CONTAINER_NAME}_cont ${CONTAINER_NAME}
+
+else
+	if [ "$CONTAINER_EXISTS" != "" ]; then
+		echo "Removing old container and start anew"
+		$DOCKER container rm -v $CONTAINER_NAME
+	else
+		echo "Start a new container $CONTAINER_NAME"
+	fi
+
+	trap "echo 'got CTRL+C... please wait 5s';docker stop -t 5 ${CONTAINER_NAME}" SIGINT SIGTERM
+	time $DOCKER run --privileged \
+		--name "${CONTAINER_NAME}" \
+		-e IMG_NAME=${IMG_NAME} \
+		${kernelMount} \
+		-v "$(pwd):/${BUILD_SYS}" -w "/${BUILD_SYS}" \
+		$DOCKER_IMG:$DOCKER_IMG_TAG \
+		bash -o pipefail -c "${buildCommand}" &
+	wait
+fi
+
+rmdir ignore
+
+build_rc=$(cat iotcrafter/build_rc)
+rm -f iotcrafter/build_rc
+
+echo "Done. RC=${build_rc}. Your image(s) should be in deploy/ on success"
+
+exit ${build_rc:-1}

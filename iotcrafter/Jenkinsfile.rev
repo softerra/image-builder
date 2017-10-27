@@ -1,0 +1,183 @@
+#!/usr/bin/env groovy
+
+def initialGitRevision = 'e841399' // merge before: tag v2017.05
+def workerJob = 'oprog-img-bbb-build'
+
+def configList = [''] // '' - is default config (iotcrafter-debian-jessie-v4.4)
+
+properties([disableConcurrentBuilds(),
+			buildDiscarder(
+				logRotator(artifactDaysToKeepStr: '',
+							artifactNumToKeepStr: '',
+							daysToKeepStr: '',
+							numToKeepStr: '3')),
+			parameters([
+				string(defaultValue: '',
+						description: 'if specified, overrides the commit which used as a start for looking for releases',
+						name: 'initialReleaseRevision')
+			])
+
+		])
+
+node {
+	stage('Cleanup') {
+		deleteDir()
+	}
+
+	def bsRepo = ''
+	def bsBranch = ''
+	def scmVars = []
+
+	def releaseList = []
+	def headInfo = ''
+	def headIsRelease = false
+	def newCommits = false
+
+	stage('Sources') {
+		// use the same repo URL and branch as ones of this Jenkinsfile script
+		def repoDef = scm.getUserRemoteConfigs()[0]
+		bsRepo = repoDef.getUrl()
+		def branchDef = scm.getBranches()[0]
+		bsBranch = branchDef.getName()
+
+		// debug
+		println("bsRepo: ${bsRepo}")
+		println("bsBranch: ${bsBranch}")
+
+		scmDesc = [$class: 'GitSCM',
+						branches: [[name: bsBranch]],
+						doGenerateSubmoduleConfigurations: false,
+						extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'image-builder']],
+						submoduleCfg: [],
+						userRemoteConfigs: [[url: bsRepo]]
+					]
+		scmVars = checkout(scmDesc)
+
+		// read last release revision from persistent storage
+		sh """
+			cp -f ${env.JENKINS_HOME}/userContent/${env.JOB_BASE_NAME}-last-release ${env.WORKSPACE}/ || \
+				echo -n > ${env.WORKSPACE}/${env.JOB_BASE_NAME}-last-release
+		"""
+		def lastReleaseRev = readFile("${env.JOB_BASE_NAME}-last-release").trim()
+		def startReleaseRev = lastReleaseRev ?: initialGitRevision
+		if (params.initialReleaseRevision != '') {
+			println("Override start revision to look for releases from: ${params.initialReleaseRevision} instead of ${startReleaseRev}")
+			startReleaseRev = params.initialReleaseRevision
+		}
+		newCommits = scmVars.GIT_COMMIT != scmVars.GIT_PREVIOUS_COMMIT
+
+		//debug
+		println("lastReleaseRev: ${lastReleaseRev}")
+		println("prevCommit: ${scmVars.GIT_PREVIOUS_COMMIT}")
+		println("curCommit: ${scmVars.GIT_COMMIT}")
+		println("startReleaseRev: ${startReleaseRev}")
+		println("newCommits: ${newCommits}")
+
+		dir('image-builder') {
+			sh """
+				# release tag starts with 'YYYY-MM-DD-'
+				git tag -l --contains ${startReleaseRev} --merged | \
+					sed -n '/[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}-/ p' > \
+						${env.WORKSPACE}/tag-list
+
+				echo -n > ${env.WORKSPACE}/release-list
+				cat ${env.WORKSPACE}/tag-list | while read tag; do \
+					abbrev=\$(git rev-parse --short \$tag); \
+					if [ "\$abbrev" != "${startReleaseRev}" ]; then \
+						echo "\${abbrev} \${tag}" >> ${env.WORKSPACE}/release-list; \
+					fi \
+				done
+
+				git tag -l --contains HEAD --merged | \
+					sed -n '/[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}-/ p' | wc -l > \
+						${env.WORKSPACE}/head-is-release
+
+				# current head info (special for ones commented as 'RC: alphanumeric')
+				git describe --tags --contains ${initialGitRevision} > ${env.WORKSPACE}/head-info || \
+					git log -1 --date=format:'%F' --format='%h %ad %s' | \
+						sed -n '/[[:space:]]RC:[[:space:]][^[:space:]]*/ {
+								s/\\([[:alnum:]]*\\)[[:space:]]\\([^[:space:]]*\\)[[:space:]]RC:[[:space:]]\\([^[:space:]]*\\).*/\\2-rc.\\3.bone-g\\1/ p
+							}
+							/[[:space:]]RC:[[:space:]][^[:space:]]*/ !{
+								s/\\([[:alnum:]]*\\)[[:space:]]\\([^[:space:]]*\\)[[:space:]].*/\\2-bone-g\\1/ p
+							}' > ${env.WORKSPACE}/head-info
+			"""
+		}
+
+		releaseList = readFile('release-list').split("\n").collect().reverse()
+		headInfo = readFile('head-info').trim()
+		headIsRelease = readFile('head-is-release').toInteger() == 1
+	}
+
+	//debug
+	println("releaseList: ${releaseList}")
+	println("headInfo: ${headInfo}")
+	println("headIsRelease: ${headIsRelease}")
+	println("workerJob: ${workerJob}")
+
+	def built = false
+	def i		// config index
+	def j = 0	// release index
+	for (release in releaseList) {
+		if (release == '') {
+			break
+		}
+		j++
+
+		i = 0
+		for (buildConfig in configList) {
+			i++
+			stage("Release-${j}-c${i}") {
+				println("Building: ${release} / config:'${buildConfig}'")
+				releaseCommit = release[0..6]
+				releaseInfo = release[8..-1]
+				build([job: workerJob,
+					parameters: [
+						[$class: 'StringParameterValue', name: 'bsRepo', value: bsRepo ],
+						[$class: 'StringParameterValue', name: 'buildGitCommit', value: releaseCommit ],
+						[$class: 'StringParameterValue', name: 'buildInfo', value: releaseInfo ],
+
+						[$class: 'BooleanParameterValue', name: 'isRelease', value: true ],
+
+						[$class: 'StringParameterValue', name: 'buildConfig', value: buildConfig ]
+					]
+				])
+
+				// save last release revision
+				sh """
+					echo -n "${releaseCommit}" > ${env.JENKINS_HOME}/userContent/${env.JOB_BASE_NAME}-last-release
+				"""
+
+				built = true
+			}
+		}
+	}
+
+	if (newCommits && !headIsRelease) {
+		i = 0
+		for (buildConfig in configList) {
+			i++
+			stage("Current-c${i}") {
+				println("Building: ${headInfo} / config:'${buildConfig}'")
+				build([job: workerJob,
+					parameters: [
+						[$class: 'StringParameterValue', name: 'bsRepo', value: bsRepo ],
+						[$class: 'StringParameterValue', name: 'buildGitCommit', value: scmVars.GIT_COMMIT ],
+						[$class: 'StringParameterValue', name: 'buildInfo', value: headInfo ],
+
+						[$class: 'BooleanParameterValue', name: 'isRelease', value: false ],
+
+						[$class: 'StringParameterValue', name: 'buildConfig', value: buildConfig ]
+					]
+				])
+
+				built = true
+			}
+		}
+	}
+
+	if (!built) {
+		println("Nothing new to build")
+	}
+}
+

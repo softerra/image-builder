@@ -1,0 +1,101 @@
+def deploy = ['base': '/var/www/iotcrafter_images']
+
+properties([disableConcurrentBuilds(),
+			buildDiscarder(
+				logRotator(artifactDaysToKeepStr: '',
+						artifactNumToKeepStr: '',
+						daysToKeepStr: '',
+						numToKeepStr: '2')),
+			parameters([
+				string(defaultValue: '', description: '', name: 'bsRepo'),
+				string(defaultValue: '', description: '', name: 'buildGitCommit'),
+				string(defaultValue: '', description: 'build identification string', name: 'buildInfo'),
+
+				booleanParam(defaultValue: false, description: '', name: 'isRelease'),
+
+				string(defaultValue: '', description: 'image-builder configuration', name: 'buildConfig'),
+            ]),
+            pipelineTriggers([])
+        ])
+
+node {
+	//debug
+	println("Params: ${params}")
+
+	if (params.bsRepo == '') {
+		error('bsRepo arg is required')
+	}
+	if (params.buildGitCommit == '') {
+		error('buildGitCommit arg is required')
+	}
+	if (params.buildInfo == '') {
+		error('buildInfo arg is required')
+	}
+
+	def buildSuffix = params.isRelease ? '' : '/current'
+	deploy.base += buildSuffix
+
+	def scmVars = []
+
+	def imgName = params.buildInfo
+
+	stage('Sources') {
+		def scmInfo = [$class: 'GitSCM',
+					branches: [[name: params.buildGitCommit]],
+					doGenerateSubmoduleConfigurations: false,
+					extensions: [[$class: 'RelativeTargetDirectory',
+									relativeTargetDir: 'image-builder']],
+					submoduleCfg: [],
+					userRemoteConfigs: [[url: params.bsRepo]]]
+
+		scmInfo['extensions'].push([$class: 'CleanBeforeCheckout'])
+
+		scmVars = checkout(scmInfo)
+
+
+		dir('image-builder') {
+			if (params.buildConfig == '') {
+				sh 'rm -f config'	// use default setting instead
+			} else {
+				sh """#!/bin/bash
+					cat > config <<EOF
+IMG_NAME=${params.buildConfig}
+EOF
+				"""
+			}
+		}
+	}
+
+	stage('Build') {
+		sh """
+			image-builder/iotcrafter/build-docker-iotcrafter.sh
+		"""
+	}
+
+	stage('Deploy') {
+		dir('image-builder/deploy/') {
+			sh """#!/bin/bash
+				CUR_DATE=\$(date +%Y-%m-%d)
+				mkdir -p ${deploy['base']}/\${CUR_DATE}
+
+				. image-builder.project
+
+				# TODO: use normal names of images in the installer
+				IMG_FNAME=\$(ls *-iotcrafter-*.img)
+				RESULT_IMG_FNAME="${imgName}-\${deb_codename}-iotcrafter.img"
+				RESULT_ZIP_FNAME="${imgName}-\${deb_codename}-iotcrafter.zip"
+
+				mv -f \$IMG_FNAME \$RESULT_IMG_FNAME
+				zip -9 \$RESULT_ZIP_FNAME \$RESULT_IMG_FNAME
+				cp -f \$RESULT_ZIP_FNAME ${deploy['base']}/\${CUR_DATE}/
+
+				if [ "${params.isRelease}" = "true" ]; then
+					mv -f \$RESULT_IMG_FNAME bbb.img
+					zip -9 bbb.img.zip bbb.img
+					rm -f bbb.img
+					mv -f bbb.img.zip ${deploy['base']}/\${CUR_DATE}
+				fi
+			"""
+		}
+	}
+}
