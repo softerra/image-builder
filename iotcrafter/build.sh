@@ -39,7 +39,7 @@ archive="xz -z -8 -v"
 beaglebone="--dtb beaglebone --bbb-old-bootloader-in-emmc --hostname beaglebone"
 
 cat > ${DIR}/deploy/gift_wrap_final_images.sh <<-__EOF__
-#!/bin/bash
+#!/bin/bash -e
 
 archive_base_rootfs () {
         if [ -d ./\${base_rootfs} ] ; then
@@ -104,8 +104,9 @@ cat > ${DIR}/deploy/setup_sdcard_populate_after_hook <<-__EOF__
     esac
 __EOF__
 
-cd ${DIR}/deploy
-./gift_wrap_final_images.sh
-cd ${DIR}
+#cd ${DIR}/deploy
+#./gift_wrap_final_images.sh
+#cd ${DIR}
 
-echo "Done: $(date)"
+echo "Build done: $(date)"
+echo "deploy/gift_wrap_final_images.sh ready to make the final image"
