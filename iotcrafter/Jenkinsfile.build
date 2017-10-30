@@ -1,4 +1,5 @@
-def deploy = ['base': '/var/www/jenkins/board_images']
+def deploy = ['base': '/var/www/jenkins/board_images',
+				'old_base': '/var/www/iotcrafter_images' ]
 
 properties([disableConcurrentBuilds(),
 			buildDiscarder(
@@ -87,13 +88,18 @@ EOF
 
 				mv -f \$IMG_FNAME \$RESULT_IMG_FNAME
 				zip -9 \$RESULT_ZIP_FNAME \$RESULT_IMG_FNAME
+				sha256sum \$RESULT_ZIP_FNAME > \${RESULT_ZIP_FNAME}.sha256sum
+
 				cp -f \$RESULT_ZIP_FNAME ${deploy['base']}/\${CUR_DATE}/
+				cp -f \${RESULT_ZIP_FNAME}.sha256sum ${deploy['base']}/\${CUR_DATE}/
 
 				if [ "${params.isRelease}" = "true" ]; then
+					mkdir -p ${deploy['old_base']}/\${CUR_DATE}
+
 					mv -f \$RESULT_IMG_FNAME bbb.img
 					zip -9 bbb.img.zip bbb.img
 					rm -f bbb.img
-					mv -f bbb.img.zip ${deploy['base']}/\${CUR_DATE}
+					mv -f bbb.img.zip ${deploy['old_base']}/\${CUR_DATE}
 				fi
 			"""
 		}
