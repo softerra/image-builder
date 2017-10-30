@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 #
-# Copyright (c) 2012-2016 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2012-2017 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -136,7 +136,8 @@ check_defines () {
 
 	if [ "x${repo_rcnee}" = "xenable" ] ; then
 		if [ ! "x${repo_rcnee_pkg_list}" = "x" ] ; then
-			deb_additional_pkgs="${deb_additional_pkgs} ${repo_rcnee_pkg_list}"
+			include=$(echo ${repo_rcnee_pkg_list} | sed 's/,/ /g' | sed 's/\t/,/g')
+			deb_additional_pkgs="${deb_additional_pkgs} ${include}"
 		fi
 	fi
 }
@@ -321,13 +322,15 @@ if [ "x${deb_distribution}" = "xdebian" ] ; then
 	echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /tmp/02compress-indexes
 	sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
 
-	#apt: make sure apt-cacher-ng doesn't break oracle-java8-installer
-	echo 'Acquire::http::Proxy::download.oracle.com "DIRECT";' > /tmp/03-proxy-oracle
-	sudo mv /tmp/03-proxy-oracle "${tempdir}/etc/apt/apt.conf.d/03-proxy-oracle"
+	if [ "${apt_proxy}" ] ; then
+		#apt: make sure apt-cacher-ng doesn't break oracle-java8-installer
+		echo 'Acquire::http::Proxy::download.oracle.com "DIRECT";' > /tmp/03-proxy-oracle
+		sudo mv /tmp/03-proxy-oracle "${tempdir}/etc/apt/apt.conf.d/03-proxy-oracle"
 
-	#apt: make sure apt-cacher-ng doesn't break https repos
-	echo 'Acquire::http::Proxy::deb.nodesource.com "DIRECT";' > /tmp/03-proxy-https
-	sudo mv /tmp/03-proxy-https "${tempdir}/etc/apt/apt.conf.d/03-proxy-https"
+		#apt: make sure apt-cacher-ng doesn't break https repos
+		echo 'Acquire::http::Proxy::deb.nodesource.com "DIRECT";' > /tmp/03-proxy-https
+		sudo mv /tmp/03-proxy-https "${tempdir}/etc/apt/apt.conf.d/03-proxy-https"
+	fi
 fi
 
 #set initial 'seed' time...
@@ -350,19 +353,6 @@ buster|sid)
 esac
 
 case "${deb_codename}" in
-wheezy)
-	echo "" >> ${wfile}
-	echo "deb http://security.debian.org/ ${deb_codename}/updates ${deb_components}" >> ${wfile}
-	echo "#deb-src http://security.debian.org/ ${deb_codename}/updates ${deb_components}" >> ${wfile}
-	echo "" >> ${wfile}
-	if [ "x${chroot_enable_debian_backports}" = "xenable" ] ; then
-		echo "deb http://ftp.us.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
-		echo "#deb-src http://ftp.us.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
-	else
-		echo "#deb http://ftp.us.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
-		echo "##deb-src http://ftp.us.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
-	fi
-	;;
 jessie|stretch)
 	echo "" >> ${wfile}
 	echo "deb http://deb.debian.org/debian-security ${deb_codename}/updates ${deb_components}" >> ${wfile}
@@ -460,15 +450,6 @@ if [ "x${deb_arch}" = "xarmhf" ] ; then
 	case "${deb_distribution}" in
 	debian)
 		case "${deb_codename}" in
-		wheezy)
-			sudo cp "${OIB_DIR}/target/init_scripts/generic-${deb_distribution}.sh" "${tempdir}/etc/init.d/generic-boot-script.sh"
-			sudo chown root:root "${tempdir}/etc/init.d/generic-boot-script.sh"
-			sudo cp "${OIB_DIR}/target/init_scripts/capemgr-${deb_distribution}.sh" "${tempdir}/etc/init.d/capemgr.sh"
-			sudo chown root:root "${tempdir}/etc/init.d/capemgr.sh"
-			sudo cp "${OIB_DIR}/target/init_scripts/capemgr" "${tempdir}/etc/default/"
-			sudo chown root:root "${tempdir}/etc/default/capemgr"
-			distro="Debian"
-			;;
 		jessie|stretch)
 			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
 			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
@@ -483,22 +464,6 @@ if [ "x${deb_arch}" = "xarmhf" ] ; then
 		;;
 	ubuntu)
 		case "${deb_codename}" in
-		trusty)
-			sudo cp "${OIB_DIR}/target/init_scripts/generic-${deb_distribution}.conf" "${tempdir}/etc/init/generic-boot-script.conf"
-			sudo chown root:root "${tempdir}/etc/init/generic-boot-script.conf"
-			sudo cp "${OIB_DIR}/target/init_scripts/capemgr-${deb_distribution}.sh" "${tempdir}/etc/init/capemgr.sh"
-			sudo chown root:root "${tempdir}/etc/init/capemgr.sh"
-			sudo cp "${OIB_DIR}/target/init_scripts/capemgr" "${tempdir}/etc/default/"
-			sudo chown root:root "${tempdir}/etc/default/capemgr"
-			distro="Ubuntu"
-
-			if [ -f "${tempdir}/etc/init/failsafe.conf" ] ; then
-				#Ubuntu: with no ethernet cable connected it can take up to 2 mins to login, removing upstart sleep calls..."
-				sudo sed -i -e 's:sleep 20:#sleep 20:g' "${tempdir}/etc/init/failsafe.conf"
-				sudo sed -i -e 's:sleep 40:#sleep 40:g' "${tempdir}/etc/init/failsafe.conf"
-				sudo sed -i -e 's:sleep 59:#sleep 59:g' "${tempdir}/etc/init/failsafe.conf"
-			fi
-			;;
 		vivid|wily|xenial)
 			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
 			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
@@ -744,7 +709,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		# Purge keep file
 		deborphan -Z
 
-		#FIXME, only tested on wheezy/jessie...
+		#FIXME, only tested on jessie...
 		apt-get -y remove deborphan dialog gettext-base libasprintf0c2 --purge
 		apt-get clean
 	}
@@ -754,6 +719,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		if [ ! "x${chroot_manual_deborphan_list}" = "x" ] ; then
 			echo "Log: (chroot): cleanup: [${chroot_manual_deborphan_list}]"
 			apt-get -y remove ${chroot_manual_deborphan_list} --purge
+			apt-get -y autoremove --purge
 			apt-get clean
 		fi
 	}
@@ -1228,6 +1194,14 @@ cat > "${DIR}/cleanup_script.sh" <<-__EOF__
 		if [ "x\${distro}" = "xUbuntu" ] ; then
 			rm -f /sbin/initctl || true
 			dpkg-divert --local --rename --remove /sbin/initctl
+		fi
+
+		if [ -f /etc/apt/apt.conf.d/03-proxy-oracle ] ; then
+			rm -rf /etc/apt/apt.conf.d/03-proxy-oracle || true
+		fi
+
+		if [ -f /etc/apt/apt.conf.d/03-proxy-https ] ; then
+			rm -rf /etc/apt/apt.conf.d/03-proxy-https || true
 		fi
 
 #		#This is tmpfs, clear out any left overs...

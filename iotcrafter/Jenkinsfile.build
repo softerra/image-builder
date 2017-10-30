@@ -88,6 +88,7 @@ EOF
 
 				mv -f \$IMG_FNAME \$RESULT_IMG_FNAME
 				zip -9 \$RESULT_ZIP_FNAME \$RESULT_IMG_FNAME
+
 				sha256sum \$RESULT_ZIP_FNAME > \${RESULT_ZIP_FNAME}.sha256sum
 
 				cp -f \$RESULT_ZIP_FNAME ${deploy['base']}/\${CUR_DATE}/

@@ -132,7 +132,7 @@ setup_desktop () {
 	if [ -f ${wfile} ] ; then
 		echo "Patching: ${wfile}"
 		sed -i -e 's:#autologin-user=:autologin-user='$rfs_username':g' ${wfile}
-		sed -i -e 's:#autologin-session=UNIMPLEMENTED:autologin-session='$rfs_default_desktop':g' ${wfile}
+		sed -i -e 's:#autologin-session=:autologin-session='$rfs_default_desktop':g' ${wfile}
 		if [ -f /opt/scripts/3rdparty/xinput_calibrator_pointercal.sh ] ; then
 			sed -i -e 's:#display-setup-script=:display-setup-script=/opt/scripts/3rdparty/xinput_calibrator_pointercal.sh:g' ${wfile}
 		fi
@@ -140,8 +140,8 @@ setup_desktop () {
 
 	if [ ! "x${rfs_desktop_background}" = "x" ] ; then
 		mkdir -p /home/${rfs_username}/.config/ || true
-		if [ -d /opt/scripts/desktop-defaults/jessie/lxqt/ ] ; then
-			cp -rv /opt/scripts/desktop-defaults/jessie/lxqt/* /home/${rfs_username}/.config
+		if [ -d /opt/scripts/desktop-defaults/stretch/lxqt/ ] ; then
+			cp -rv /opt/scripts/desktop-defaults/stretch/lxqt/* /home/${rfs_username}/.config
 		fi
 		chown -R ${rfs_username}:${rfs_username} /home/${rfs_username}/.config/
 	fi
@@ -195,7 +195,6 @@ install_pip_pkgs () {
 					sed -i -e 's:4.1.0:3.4.0:g' setup.py
 					python setup.py install
 				fi
-				pip install --upgrade PyBBIO
 				pip install iw_parse
 			fi
 		fi
@@ -223,15 +222,15 @@ install_git_repos () {
 
 	git_repo="https://github.com/prpplague/Userspace-Arduino"
 	git_target_dir="/opt/source/Userspace-Arduino"
-	git_clone
+#	git_clone
 
 	git_repo="https://github.com/strahlex/BBIOConfig.git"
 	git_target_dir="/opt/source/BBIOConfig"
-	git_clone
+#	git_clone
 
 	git_repo="https://github.com/prpplague/fb-test-app.git"
 	git_target_dir="/opt/source/fb-test-app"
-	git_clone
+#	git_clone
 	if [ -f ${git_target_dir}/.git/config ] ; then
 		cd ${git_target_dir}/
 		if [ -f /usr/bin/make ] ; then
@@ -244,7 +243,7 @@ install_git_repos () {
 	if [ -f /usr/include/prussdrv.h ] ; then
 		git_repo="https://github.com/biocode3D/prufh.git"
 		git_target_dir="/opt/source/prufh"
-		git_clone
+#		git_clone
 		if [ -f ${git_target_dir}/.git/config ] ; then
 			cd ${git_target_dir}/
 			if [ -f /usr/bin/make ] ; then
@@ -257,16 +256,16 @@ install_git_repos () {
 	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
 	git_target_dir="/opt/source/dtb-4.4-ti"
 	git_branch="4.4-ti"
-	git_clone_branch
+#	git_clone_branch
 
 	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
 	git_target_dir="/opt/source/dtb-4.9-ti"
 	git_branch="4.9-ti"
-	git_clone_branch
+#	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/bb.org-overlays"
 	git_target_dir="/opt/source/bb.org-overlays"
-	git_clone
+#	git_clone
 	if [ -f ${git_target_dir}/.git/config ] ; then
 		cd ${git_target_dir}/
 		if [ ! "x${repo_rcnee_pkg_version}" = "x" ] ; then
@@ -286,7 +285,7 @@ install_git_repos () {
 
 	git_repo="https://github.com/ungureanuvladvictor/BBBlfs"
 	git_target_dir="/opt/source/BBBlfs"
-	git_clone
+#	git_clone
 	if [ -f ${git_target_dir}/.git/config ] ; then
 		cd ${git_target_dir}/
 		if [ -f /usr/bin/make ] ; then
@@ -298,12 +297,32 @@ install_git_repos () {
 
 	git_repo="https://github.com/StrawsonDesign/Robotics_Cape_Installer"
 	git_target_dir="/opt/source/Robotics_Cape_Installer"
-	git_clone
+#	git_clone
+
+	git_repo="https://github.com/mcdeoliveira/rcpy"
+	git_target_dir="/opt/source/rcpy"
+#	git_clone
+	if [ -f ${git_target_dir}/.git/config ] ; then
+		cd ${git_target_dir}/
+		if [ -f /usr/bin/python3 ] && [ -f /usr/bin/easy_install ] ; then
+			/usr/bin/python3 setup.py install
+		fi
+	fi
+
+	git_repo="https://github.com/mcdeoliveira/pyctrl"
+	git_target_dir="/opt/source/pyctrl"
+#	git_clone
+	if [ -f ${git_target_dir}/.git/config ] ; then
+		cd ${git_target_dir}/
+		if [ -f /usr/bin/python3 ] && [ -f /usr/bin/easy_install ] ; then
+			/usr/bin/python3 setup.py install
+		fi
+	fi
 
 	#beagle-tester
 	git_repo="https://github.com/jadonk/beagle-tester"
 	git_target_dir="/opt/source/beagle-tester"
-	git_clone
+#	git_clone
 	if [ -f ${git_target_dir}/.git/config ] ; then
 		if [ -f /usr/lib/libroboticscape.so ] ; then
 			cd ${git_target_dir}/
@@ -340,20 +359,21 @@ other_source_links () {
 }
 
 unsecure_root () {
-	root_password=$(cat /etc/shadow | grep root | awk -F ':' '{print $2}')
-	sed -i -e 's:'$root_password'::g' /etc/shadow
+#	root_password=$(cat /etc/shadow | grep root | awk -F ':' '{print $2}')
+#	sed -i -e 's:'$root_password'::g' /etc/shadow
 
-	if [ -f /etc/ssh/sshd_config ] ; then
-		#Make ssh root@beaglebone work..
-		sed -i -e 's:PermitEmptyPasswords no:PermitEmptyPasswords yes:g' /etc/ssh/sshd_config
-		sed -i -e 's:UsePAM yes:UsePAM no:g' /etc/ssh/sshd_config
-		#Starting with Jessie:
-		sed -i -e 's:PermitRootLogin without-password:PermitRootLogin yes:g' /etc/ssh/sshd_config
-	fi
+#	if [ -f /etc/ssh/sshd_config ] ; then
+#		#Make ssh root@beaglebone work..
+#		sed -i -e 's:PermitEmptyPasswords no:PermitEmptyPasswords yes:g' /etc/ssh/sshd_config
+#		sed -i -e 's:UsePAM yes:UsePAM no:g' /etc/ssh/sshd_config
+#		#Starting with Jessie:
+#		sed -i -e 's:PermitRootLogin without-password:PermitRootLogin yes:g' /etc/ssh/sshd_config
+#	fi
 
-	if [ -f /etc/sudoers ] ; then
+	if [ -d /etc/sudoers.d/ ] ; then
 		#Don't require password for sudo access
-		echo "${rfs_username}  ALL=NOPASSWD: ALL" >>/etc/sudoers
+		echo "${rfs_username} ALL=NOPASSWD: ALL" >/etc/sudoers.d/${rfs_username}
+		chmod 0440 /etc/sudoers.d/${rfs_username}
 	fi
 }
 
@@ -362,7 +382,7 @@ is_this_qemu
 setup_system
 setup_desktop
 
-install_pip_pkgs
+#install_pip_pkgs
 if [ -f /usr/bin/git ] ; then
 	git config --global user.email "${rfs_username}@example.com"
 	git config --global user.name "${rfs_username}"

@@ -68,6 +68,10 @@ PocketBone:
 
        0: [aa 55 33 ee 41 33 33 35  42 4e 4c 54 42 50 30 30 |.U3.A335BNLTBP00|]
 
+BeagleLogic Standalone:
+
+       A: [aa 55 33 ee 41 33 33 35  42 4c 47 43 30 30 30 41 |.U3.A335BLGC000A|]
+
 Scripts to support customized image generation for many arm systems
 
 BeagleBoard branch:
@@ -112,15 +116,15 @@ Master branch:
 
 eewiki.net: Debian Stable (armel) minfs:
 
-    ./RootStock-NG.sh -c eewiki_minfs_debian_jessie_armel
+    ./RootStock-NG.sh -c eewiki_minfs_debian_stretch_armel
 
 eewiki.net: Debian Stable (armhf) minfs:
 
-    ./RootStock-NG.sh -c eewiki_minfs_debian_jessie_armhf
+    ./RootStock-NG.sh -c eewiki_minfs_debian_stretch_armhf
 
 eewiki.net: Ubuntu Stable (armhf) minfs:
 
-    ./RootStock-NG.sh -c eewiki_minfs_ubuntu_trusty_armhf
+    ./RootStock-NG.sh -c eewiki_minfs_ubuntu_xenial_armhf
 
 eewiki.net: Debian Stable (armel) barefs:
 
@@ -138,7 +142,7 @@ elinux.org: Debian Images:
 
 elinux.org: Ubuntu Images:
 
-    ./RootStock-NG.sh -c rcn-ee_console_ubuntu_trusty_armhf
+    ./RootStock-NG.sh -c rcn-ee_console_ubuntu_xenial_armhf
     http://elinux.org/BeagleBoardUbuntu#Demo_Image
 
 Release Process:
@@ -150,5 +154,5 @@ Release Process:
 MachineKit:
 ------------
 
-    ./RootStock-NG.sh -c machinekit-debian-wheezy
+    ./RootStock-NG.sh -c machinekit-debian-jessie
     http://elinux.org/Beagleboard:BeagleBoneBlack_Debian#BBW.2FBBB_.28All_Revs.29_Machinekit

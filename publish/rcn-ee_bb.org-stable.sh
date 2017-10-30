@@ -13,7 +13,6 @@ if [ -d ./deploy ] ; then
 fi
 
 if [ ! -f jenkins.build ] ; then
-#./RootStock-NG.sh -c machinekit-debian-wheezy
 ./RootStock-NG.sh -c machinekit-debian-jessie
 ./RootStock-NG.sh -c bb.org-debian-jessie-console-v4.4
 ./RootStock-NG.sh -c bb.org-debian-jessie-iot-v4.4
@@ -24,38 +23,45 @@ if [ ! -f jenkins.build ] ; then
 ./RootStock-NG.sh -c seeed-debian-jessie-lxqt-4gb-v4.4
 ./RootStock-NG.sh -c seeed-debian-jessie-iot-v4.4
 ./RootStock-NG.sh -c bb.org-debian-jessie-oemflasher
+
+./RootStock-NG.sh -c bb.org-debian-stretch-console-v4.9
 ./RootStock-NG.sh -c bb.org-debian-stretch-iot-v4.4
-./RootStock-NG.sh -c bb.org-debian-stretch-lxqt-v4.4
+./RootStock-NG.sh -c bb.org-debian-stretch-lxqt-2gb-v4.9
+./RootStock-NG.sh -c bb.org-debian-stretch-lxqt-v4.9
 ./RootStock-NG.sh -c bb.org-debian-stretch-lxqt-xm
-./RootStock-NG.sh -c bb.org-debian-stretch-wayland-v4.4
+
+./RootStock-NG.sh -c bb.org-debian-buster-iot-v4.9
 else
 	mkdir -p ${DIR}/deploy/ || true
 fi
 
-    debian_wheezy_machinekit="debian-7.11-machinekit-armhf-${time}"
-    debian_jessie_machinekit="debian-8.8-machinekit-armhf-${time}"
+    debian_jessie_machinekit="debian-8.9-machinekit-armhf-${time}"
 
-       debian_jessie_console="debian-8.8-console-armhf-${time}"
-           debian_jessie_iot="debian-8.8-iot-armhf-${time}"
-      debian_jessie_lxqt_2gb="debian-8.8-lxqt-2gb-armhf-${time}"
-      debian_jessie_lxqt_4gb="debian-8.8-lxqt-4gb-armhf-${time}"
-   debian_jessie_lxqt_xm_4gb="debian-8.8-lxqt-xm-4gb-armhf-${time}"
-    debian_jessie_oemflasher="debian-8.8-oemflasher-armhf-${time}"
+       debian_jessie_console="debian-8.9-console-armhf-${time}"
+           debian_jessie_iot="debian-8.9-iot-armhf-${time}"
+      debian_jessie_lxqt_2gb="debian-8.9-lxqt-2gb-armhf-${time}"
+      debian_jessie_lxqt_4gb="debian-8.9-lxqt-4gb-armhf-${time}"
+   debian_jessie_lxqt_xm_4gb="debian-8.9-lxqt-xm-4gb-armhf-${time}"
+    debian_jessie_oemflasher="debian-8.9-oemflasher-armhf-${time}"
 
-     debian_jessie_seeed_iot="debian-8.8-seeed-iot-armhf-${time}"
-debian_jessie_seeed_lxqt_4gb="debian-8.8-seeed-lxqt-4gb-armhf-${time}"
+     debian_jessie_seeed_iot="debian-8.9-seeed-iot-armhf-${time}"
+debian_jessie_seeed_lxqt_4gb="debian-8.9-seeed-lxqt-4gb-armhf-${time}"
 
-          debian_stretch_iot="debian-stretch-iot-armhf-${time}"
-         debian_stretch_lxqt="debian-stretch-lxqt-armhf-${time}"
-      debian_stretch_lxqt_xm="debian-stretch-lxqt-xm-armhf-${time}"
-      debian_stretch_wayland="debian-stretch-wayland-armhf-${time}"
+      debian_stretch_console="debian-9.1-console-armhf-${time}"
+          debian_stretch_iot="debian-9.1-iot-armhf-${time}"
+     debian_stretch_lxqt_2gb="debian-9.1-lxqt-2gb-armhf-${time}"
+         debian_stretch_lxqt="debian-9.1-lxqt-armhf-${time}"
+      debian_stretch_lxqt_xm="debian-9.1-lxqt-xm-armhf-${time}"
+      debian_stretch_wayland="debian-9.1-wayland-armhf-${time}"
+
+           debian_buster_iot="debian-buster-iot-armhf-${time}"
 
 xz_img="xz -z -8"
 #xz_tar="xz -z -8"
 xz_tar="xz -T2 -z -8"
 
 beaglebone="--dtb beaglebone --rootfs_label rootfs --hostname beaglebone --enable-uboot-cape-overlays"
-pru_rproc="--enable-uboot-pru-rproc-44ti"
+pru_rproc_v44ti="--enable-uboot-pru-rproc-44ti"
 
 beagle_xm="--dtb omap3-beagle-xm --rootfs_label rootfs --hostname beagleboard"
 
@@ -164,11 +170,6 @@ generate_img () {
         fi
 }
 
-###machinekit (wheezy):
-base_rootfs="${debian_wheezy_machinekit}" ; blend="machinekit" ; extract_base_rootfs
-
-options="--img-4gb bone-\${base_rootfs} ${beaglebone} --enable-systemd" ; generate_img
-
 ###machinekit (jessie):
 base_rootfs="${debian_jessie_machinekit}" ; blend="machinekit" ; extract_base_rootfs
 
@@ -178,10 +179,10 @@ options="--img-4gb bone-\${base_rootfs} ${beaglebone}" ; generate_img
 base_rootfs="${debian_jessie_console}" ; blend="console" ; extract_base_rootfs
 
 options="--img-1gb bbx15-\${base_rootfs}       ${beagle_x15}"                ; generate_img
-options="--img-1gb bone-\${base_rootfs}        ${beaglebone} ${pru_rproc}"   ; generate_img
+options="--img-1gb bone-\${base_rootfs}        ${beaglebone} ${pru_rproc_v44ti}"   ; generate_img
 options="--img-1gb a335-eeprom-\${base_rootfs} ${beaglebone} --a335-flasher" ; generate_img
 options="--img-1gb bp00-eeprom-\${base_rootfs} ${beaglebone} --bp00-flasher" ; generate_img
-options="--img-1gb am57xx-x15-eeprom-\${base_rootfs}       ${beagle_x15} --emmc-flasher --am57xx-x15-flasher" ; generate_img
+options="--img-1gb am57xx-x15-eeprom-\${base_rootfs}       ${beagle_x15} --emmc-flasher --am57xx-x15-revc-flasher" ; generate_img
 options="--img-1gb am571x-sndrblock-eeprom-\${base_rootfs} ${beagle_x15} --emmc-flasher --am571x-sndrblock-flasher" ; generate_img
 
 #options="--img-1gb me06-blank-\${base_rootfs}  ${beaglebone} --me06-flasher" ; generate_img
@@ -192,9 +193,9 @@ options="--img-1gb am571x-sndrblock-eeprom-\${base_rootfs} ${beagle_x15} --emmc-
 base_rootfs="${debian_jessie_iot}" ; blend="iot" ; extract_base_rootfs
 
 options="--img-4gb bbx15-\${base_rootfs}      ${beagle_x15}"                             ; generate_img
-options="--img-4gb bone-\${base_rootfs}       ${beaglebone} ${pru_rproc}"                ; generate_img
-options="--img-4gb BBB-blank-\${base_rootfs}  ${beaglebone} ${pru_rproc} --emmc-flasher" ; generate_img
-options="--img-4gb BBBL-blank-\${base_rootfs} ${beaglebone} ${pru_rproc} --bbbl-flasher" ; generate_img
+options="--img-4gb bone-\${base_rootfs}       ${beaglebone} ${pru_rproc_v44ti}"                ; generate_img
+options="--img-4gb BBB-blank-\${base_rootfs}  ${beaglebone} ${pru_rproc_v44ti} --emmc-flasher" ; generate_img
+options="--img-4gb BBBL-blank-\${base_rootfs} ${beaglebone} ${pru_rproc_v44ti} --bbbl-flasher" ; generate_img
 
 #options="--img-4gb BBB-blank-uboot-overlay-\${base_rootfs}  ${beaglebone} --emmc-flasher ${overlay}" ; generate_img
 #options="--img-4gb BBBW-blank-\${base_rootfs}  ${beaglebone}   --bbbw-flasher" ; generate_img
@@ -202,21 +203,20 @@ options="--img-4gb BBBL-blank-\${base_rootfs} ${beaglebone} ${pru_rproc} --bbbl-
 ###lxqt-2gb image (jessie):
 base_rootfs="${debian_jessie_lxqt_2gb}" ; blend="lxqt-2gb" ; extract_base_rootfs
 
-options="--img-2gb bone-\${base_rootfs}  ${beaglebone} ${pru_rproc}" ; generate_img
-
-#options="--img-2gb BBB-blank-\${base_rootfs} ${beaglebone} --emmc-flasher" ; generate_img
+options="--img-2gb bone-\${base_rootfs}  ${beaglebone} ${pru_rproc_v44ti}" ; generate_img
+options="--img-2gb BBB-blank-\${base_rootfs} ${beaglebone}  ${pru_rproc_v44ti} --emmc-flasher" ; generate_img
 
 ###lxqt-4gb image (jessie):
 base_rootfs="${debian_jessie_lxqt_4gb}" ; blend="lxqt-4gb" ; extract_base_rootfs
 
-options="--img-4gb bbx15-\${base_rootfs}      ${beagle_x15}"                             ; generate_img
-options="--img-4gb bone-\${base_rootfs}       ${beaglebone} ${pru_rproc}"                ; generate_img
-options="--img-4gb BBB-blank-\${base_rootfs}  ${beaglebone} ${pru_rproc} --emmc-flasher" ; generate_img
-options="--img-4gb BBBW-blank-\${base_rootfs} ${beaglebone} ${pru_rproc} --bbbw-flasher" ; generate_img
+options="--img-4gb bbx15-\${base_rootfs}       ${beagle_x15}"                             ; generate_img
+options="--img-4gb bbx15-blank-\${base_rootfs} ${beagle_x15} --emmc-flasher --am57xx-x15-revc-flasher" ; generate_img
+options="--img-4gb bone-\${base_rootfs}        ${beaglebone} ${pru_rproc_v44ti}"                ; generate_img
+options="--img-4gb BBB-blank-\${base_rootfs}   ${beaglebone} ${pru_rproc_v44ti} --emmc-flasher" ; generate_img
+options="--img-4gb BBBW-blank-\${base_rootfs}  ${beaglebone} ${pru_rproc_v44ti} --bbbw-flasher" ; generate_img
 
 #options="--img-4gb BBB-blank-uboot-overlay-\${base_rootfs}  ${beaglebone} --emmc-flasher ${overlay}" ; generate_img
 #options="--img-4gb m10a-blank-\${base_rootfs}  ${beaglebone}  --m10a-flasher" ; generate_img
-#options="--img-4gb bbx15-blank-\${base_rootfs} ${beagle_x15}  --emmc-flasher" ; generate_img
 
 ###lxqt-xm-4gb image (jessie):
 base_rootfs="${debian_jessie_lxqt_xm_4gb}" ; blend="lxqt-xm-4gb" ; extract_base_rootfs
@@ -235,19 +235,33 @@ base_rootfs="${debian_jessie_seeed_lxqt_4gb}" ; blend="seeed-lxqt-4gb" ; extract
 options="--img-4gb bone-\${base_rootfs}      ${beaglebone}"                ; generate_img
 #options="--img-4gb BBG-blank-\${base_rootfs} ${beaglebone}  --bbg-flasher" ; generate_img
 
+###console image (stretch):
+base_rootfs="${debian_stretch_console}" ; blend="stretch-console" ; extract_base_rootfs
+
+options="--img-1gb bbx15-\${base_rootfs}     ${beagle_x15}"                ; generate_img
+options="--img-1gb bone-\${base_rootfs}      ${beaglebone}"                ; generate_img
+
 ###iot image (stretch):
 base_rootfs="${debian_stretch_iot}" ; blend="stretch-iot" ; extract_base_rootfs
 
-options="--img-4gb bbx15-\${base_rootfs}     ${beagle_x15}"                             ; generate_img
-options="--img-4gb bone-\${base_rootfs}      ${beaglebone} ${pru_rproc}"                ; generate_img
-options="--img-4gb BBB-blank-\${base_rootfs} ${beaglebone} ${pru_rproc} --emmc-flasher" ; generate_img
+options="--img-4gb bbx15-\${base_rootfs}      ${beagle_x15}"                                   ; generate_img
+options="--img-4gb bone-\${base_rootfs}       ${beaglebone} ${pru_rproc_v44ti}"                ; generate_img
+options="--img-4gb BBB-blank-\${base_rootfs}  ${beaglebone} ${pru_rproc_v44ti} --emmc-flasher" ; generate_img
+options="--img-4gb BBBL-blank-\${base_rootfs} ${beaglebone} ${pru_rproc_v44ti} --bbbl-flasher" ; generate_img
+
+###lxqt-2gb image (stretch):
+base_rootfs="${debian_stretch_lxqt_2gb}" ; blend="stretch-lxqt-2gb" ; extract_base_rootfs
+
+options="--img-2gb bone-\${base_rootfs}  ${beaglebone}" ; generate_img
+options="--img-2gb BBB-blank-\${base_rootfs} ${beaglebone} --emmc-flasher" ; generate_img
 
 ###lxqt image (stretch):
 base_rootfs="${debian_stretch_lxqt}" ; blend="stretch-lxqt" ; extract_base_rootfs
 
-options="--img-4gb bbx15-\${base_rootfs}     ${beagle_x15}"                             ; generate_img
-options="--img-4gb bone-\${base_rootfs}      ${beaglebone} ${pru_rproc}"                ; generate_img
-options="--img-4gb BBB-blank-\${base_rootfs} ${beaglebone} ${pru_rproc} --emmc-flasher" ; generate_img
+options="--img-4gb bbx15-\${base_rootfs}       ${beagle_x15}"                             ; generate_img
+options="--img-4gb bbx15-blank-\${base_rootfs} ${beagle_x15} --emmc-flasher --am57xx-x15-revc-flasher" ; generate_img
+options="--img-4gb bone-\${base_rootfs}        ${beaglebone}"                ; generate_img
+options="--img-4gb BBB-blank-\${base_rootfs}   ${beaglebone} --emmc-flasher" ; generate_img
 
 ###lxqt image (stretch):
 base_rootfs="${debian_stretch_lxqt_xm}" ; blend="stretch-lxqt-xm" ; extract_base_rootfs
@@ -257,11 +271,17 @@ options="--img-4gb bbxm-\${base_rootfs}  ${beagle_xm}" ; generate_img
 ### wayland image (stretch):
 base_rootfs="${debian_stretch_wayland}" ; blend="stretch-wayland" ; extract_base_rootfs
 
-options="--img-4gb bbx15-\${base_rootfs} ${beagle_x15}"                 ; generate_img
-options="--img-4gb bone-\${base_rootfs}  ${beaglebone} ${pru_rproc}"    ; generate_img
+options="--img-4gb bbx15-\${base_rootfs} ${beagle_x15}"    ; generate_img
+options="--img-4gb bone-\${base_rootfs}  ${beaglebone}"    ; generate_img
+
+###iot image (buster):
+base_rootfs="${debian_buster_iot}" ; blend="buster-iot" ; extract_base_rootfs
+
+options="--img-4gb bbx15-\${base_rootfs}     ${beagle_x15}"                ; generate_img
+options="--img-4gb bone-\${base_rootfs}      ${beaglebone}"                ; generate_img
+options="--img-4gb BBB-blank-\${base_rootfs} ${beaglebone} --emmc-flasher" ; generate_img
 
 ###archive *.tar
-base_rootfs="${debian_wheezy_machinekit}"     ; blend="machinekit"      ; archive_base_rootfs
 base_rootfs="${debian_jessie_machinekit}"     ; blend="machinekit"      ; archive_base_rootfs
 base_rootfs="${debian_jessie_console}"        ; blend="console"         ; archive_base_rootfs
 base_rootfs="${debian_jessie_iot}"            ; blend="iot"             ; archive_base_rootfs
@@ -271,17 +291,17 @@ base_rootfs="${debian_jessie_lxqt_xm_4gb}"    ; blend="lxqt-xm-4gb"     ; archiv
 base_rootfs="${debian_jessie_oemflasher}"     ; blend="oemflasher"      ; archive_base_rootfs
 base_rootfs="${debian_jessie_seeed_iot}"      ; blend="seeed-iot"       ; archive_base_rootfs
 base_rootfs="${debian_jessie_seeed_lxqt_4gb}" ; blend="seeed-lxqt-4gb"  ; archive_base_rootfs
-base_rootfs="${debian_stretch_iot}"           ; blend="stretch-iot"     ; archive_base_rootfs
-base_rootfs="${debian_stretch_lxqt}"          ; blend="stretch-lxqt"    ; archive_base_rootfs
-base_rootfs="${debian_stretch_lxqt_xm}"       ; blend="stretch-lxqt-xm" ; archive_base_rootfs
-base_rootfs="${debian_stretch_wayland}"       ; blend="stretch-wayland" ; archive_base_rootfs
+
+base_rootfs="${debian_stretch_console}"       ; blend="stretch-console"  ; archive_base_rootfs
+base_rootfs="${debian_stretch_iot}"           ; blend="stretch-iot"      ; archive_base_rootfs
+base_rootfs="${debian_stretch_lxqt_2gb}"      ; blend="stretch-lxqt-2gb" ; archive_base_rootfs
+base_rootfs="${debian_stretch_lxqt}"          ; blend="stretch-lxqt"     ; archive_base_rootfs
+base_rootfs="${debian_stretch_lxqt_xm}"       ; blend="stretch-lxqt-xm"  ; archive_base_rootfs
+base_rootfs="${debian_stretch_wayland}"       ; blend="stretch-wayland"  ; archive_base_rootfs
+
+base_rootfs="${debian_buster_iot}"            ; blend="buster-iot"      ; archive_base_rootfs
 
 ###archive *.img
-###machinekit (wheezy):
-base_rootfs="${debian_wheezy_machinekit}" ; blend="machinekit"
-
-wfile="bone-\${base_rootfs}-4gb" ; archive_img
-
 ###machinekit (jessie):
 base_rootfs="${debian_jessie_machinekit}" ; blend="machinekit"
 
@@ -310,11 +330,13 @@ wfile="BBBL-blank-\${base_rootfs}-4gb"  ; archive_img
 base_rootfs="${debian_jessie_lxqt_2gb}" ; blend="lxqt-2gb"
 
 wfile="bone-\${base_rootfs}-2gb"      ; archive_img
+wfile="BBB-blank-\${base_rootfs}-2gb"      ; archive_img
 
 ###lxqt-4gb image (jessie):
 base_rootfs="${debian_jessie_lxqt_4gb}" ; blend="lxqt-4gb"
 
 wfile="bbx15-\${base_rootfs}-4gb"       ; archive_img
+wfile="bbx15-blank-\${base_rootfs}-4gb" ; archive_img
 wfile="bone-\${base_rootfs}-4gb"        ; archive_img
 wfile="BBB-blank-\${base_rootfs}-4gb"   ; archive_img
 wfile="BBBW-blank-\${base_rootfs}-4gb"  ; archive_img
@@ -334,17 +356,31 @@ base_rootfs="${debian_jessie_seeed_lxqt_4gb}" ; blend="seeed-lxqt-4gb"
 
 wfile="bone-\${base_rootfs}-4gb"      ; archive_img
 
+###console image (stretch):
+base_rootfs="${debian_stretch_console}" ; blend="stretch-console"
+
+wfile="bbx15-\${base_rootfs}-1gb"          ; archive_img
+wfile="bone-\${base_rootfs}-1gb"           ; archive_img
+
 ###iot image (stretch):
 base_rootfs="${debian_stretch_iot}" ; blend="stretch-iot"
 
 wfile="bbx15-\${base_rootfs}-4gb"          ; archive_img
 wfile="bone-\${base_rootfs}-4gb"           ; archive_img
 wfile="BBB-blank-\${base_rootfs}-4gb"      ; archive_img
+wfile="BBBL-blank-\${base_rootfs}-4gb"     ; archive_img
+
+###lxqt-2gb image (stretch):
+base_rootfs="${debian_stretch_lxqt_2gb}" ; blend="stretch-lxqt-2gb"
+
+wfile="bone-\${base_rootfs}-2gb"           ; archive_img
+wfile="BBB-blank-\${base_rootfs}-2gb"      ; archive_img
 
 ###lxqt image (stretch):
 base_rootfs="${debian_stretch_lxqt}" ; blend="stretch-lxqt"
 
 wfile="bbx15-\${base_rootfs}-4gb"          ; archive_img
+wfile="bbx15-blank-\${base_rootfs}-4gb"    ; archive_img
 wfile="bone-\${base_rootfs}-4gb"           ; archive_img
 wfile="BBB-blank-\${base_rootfs}-4gb"      ; archive_img
 
@@ -358,6 +394,13 @@ base_rootfs="${debian_stretch_wayland}" ; blend="stretch-wayland"
 
 wfile="bbx15-\${base_rootfs}-4gb"      ; archive_img
 wfile="bone-\${base_rootfs}-4gb"       ; archive_img
+
+###iot image (buster):
+base_rootfs="${debian_buster_iot}" ; blend="buster-iot"
+
+wfile="bbx15-\${base_rootfs}-4gb"          ; archive_img
+wfile="bone-\${base_rootfs}-4gb"           ; archive_img
+wfile="BBB-blank-\${base_rootfs}-4gb"      ; archive_img
 
 __EOF__
 

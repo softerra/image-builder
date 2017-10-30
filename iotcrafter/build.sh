@@ -36,7 +36,26 @@ echo "Rootfs Done: $(date)"
 
 debian_iotcrafter=$(cat ./latest_version)
 archive="xz -z -8 -v"
+# we don't enable cape-universal
 beaglebone="--dtb beaglebone --bbb-old-bootloader-in-emmc --hostname beaglebone"
+
+# TODO consider (rcn-ee_bb.org-stable.sh):
+#beaglebone="--dtb beaglebone --rootfs_label rootfs --hostname beaglebone \
+#--enable-uboot-cape-overlays --enable-uboot-pru-rproc-44ti"
+
+# TODO: allow different image types for the same config (IMG_NAME)
+# need revising pack-error-cleanup-try loop (postbuild.sh)
+
+# Publish options for original images (IOT images)
+# publish/rcn-ee_seeed-stable.sh
+#beaglebone="--dtb beaglebone --bbb-old-bootloader-in-emmc \
+#--rootfs_label rootfs --hostname beaglebone --enable-cape-universal"
+# publish/bb.org_4gb_stable.sh
+#beaglebone="--dtb beaglebone --bbb-old-bootloader-in-emmc \
+#--rootfs_label rootfs --hostname beaglebone --enable-cape-universal"
+# publish/rcn-ee_bb.org-stable.sh
+#beaglebone="--dtb beaglebone --rootfs_label rootfs --hostname beaglebone --enable-uboot-cape-overlays"
+# + pru_rproc_v44ti="--enable-uboot-pru-rproc-44ti"
 
 cat > ${DIR}/deploy/gift_wrap_final_images.sh <<-__EOF__
 #!/bin/bash -e

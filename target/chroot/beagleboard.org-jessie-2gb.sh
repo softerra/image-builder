@@ -223,15 +223,15 @@ install_git_repos () {
 
 	git_repo="https://github.com/prpplague/Userspace-Arduino"
 	git_target_dir="/opt/source/Userspace-Arduino"
-	git_clone
+#	git_clone
 
 	git_repo="https://github.com/strahlex/BBIOConfig.git"
 	git_target_dir="/opt/source/BBIOConfig"
-	git_clone
+#	git_clone
 
 	git_repo="https://github.com/prpplague/fb-test-app.git"
 	git_target_dir="/opt/source/fb-test-app"
-	git_clone
+#	git_clone
 	if [ -f ${git_target_dir}/.git/config ] ; then
 		cd ${git_target_dir}/
 		if [ -f /usr/bin/make ] ; then
@@ -244,7 +244,7 @@ install_git_repos () {
 	if [ -f /usr/include/prussdrv.h ] ; then
 		git_repo="https://github.com/biocode3D/prufh.git"
 		git_target_dir="/opt/source/prufh"
-		git_clone
+#		git_clone
 		if [ -f ${git_target_dir}/.git/config ] ; then
 			cd ${git_target_dir}/
 			if [ -f /usr/bin/make ] ; then
@@ -257,16 +257,16 @@ install_git_repos () {
 	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
 	git_target_dir="/opt/source/dtb-4.4-ti"
 	git_branch="4.4-ti"
-	git_clone_branch
+#	git_clone_branch
 
 	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
 	git_target_dir="/opt/source/dtb-4.9-ti"
 	git_branch="4.9-ti"
-	git_clone_branch
+#	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/bb.org-overlays"
 	git_target_dir="/opt/source/bb.org-overlays"
-	git_clone
+#	git_clone
 	if [ -f ${git_target_dir}/.git/config ] ; then
 		cd ${git_target_dir}/
 		if [ ! "x${repo_rcnee_pkg_version}" = "x" ] ; then
@@ -286,7 +286,7 @@ install_git_repos () {
 
 	git_repo="https://github.com/ungureanuvladvictor/BBBlfs"
 	git_target_dir="/opt/source/BBBlfs"
-	git_clone
+#	git_clone
 	if [ -f ${git_target_dir}/.git/config ] ; then
 		cd ${git_target_dir}/
 		if [ -f /usr/bin/make ] ; then
@@ -298,12 +298,12 @@ install_git_repos () {
 
 	git_repo="https://github.com/StrawsonDesign/Robotics_Cape_Installer"
 	git_target_dir="/opt/source/Robotics_Cape_Installer"
-	git_clone
+#	git_clone
 
 	#beagle-tester
 	git_repo="https://github.com/jadonk/beagle-tester"
 	git_target_dir="/opt/source/beagle-tester"
-	git_clone
+#	git_clone
 	if [ -f ${git_target_dir}/.git/config ] ; then
 		if [ -f /usr/lib/libroboticscape.so ] ; then
 			cd ${git_target_dir}/

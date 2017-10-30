@@ -1164,6 +1164,10 @@ populate_rootfs () {
 	kernel_detection
 	kernel_select
 
+	if [ ! "x${uboot_eeprom}" = "x" ] ; then
+		echo "board_eeprom_header=${uboot_eeprom}" > "${TEMPDIR}/disk/boot/.eeprom.txt"
+	fi
+
 	wfile="${TEMPDIR}/disk/boot/uEnv.txt"
 	echo "#Docs: http://elinux.org/Beagleboard:U-boot_partitioning_layout_2.0" > ${wfile}
 	echo "" >> ${wfile}
@@ -1253,12 +1257,12 @@ populate_rootfs () {
 			if [ "x${uboot_pru_rproc_44ti}" = "xenable" ] ; then
 				echo "###pru_rproc (4.4.x-ti kernel)" >> ${wfile}
 				echo "uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo" >> ${wfile}
-				echo "###pru_uio (mainline kernel)" >> ${wfile}
+				echo "###pru_uio (4.4.x-ti & mainline/bone kernel)" >> ${wfile}
 				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo" >> ${wfile}
 			else
 				echo "###pru_rproc (4.4.x-ti kernel)" >> ${wfile}
 				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo" >> ${wfile}
-				echo "###pru_uio (mainline kernel)" >> ${wfile}
+				echo "###pru_uio (4.4.x-ti & mainline/bone kernel)" >> ${wfile}
 				echo "uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo" >> ${wfile}
 			fi
 			echo "###" >> ${wfile}
@@ -1569,6 +1573,10 @@ populate_rootfs () {
 		echo "# BeagleBone: net device ()" >> ${TEMPDIR}/disk${file}
 		echo "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"cpsw\", ATTR{dev_id}==\"0x0\", ATTR{type}==\"1\", KERNEL==\"eth*\", NAME=\"eth0\"" >> ${TEMPDIR}/disk${file}
 		echo "" >> ${TEMPDIR}/disk${file}
+
+		if [ -f ${TEMPDIR}/disk/etc/init.d/cpufrequtils ] ; then
+			sed -i 's/GOVERNOR="ondemand"/GOVERNOR="performance"/g' ${TEMPDIR}/disk/etc/init.d/cpufrequtils
+		fi
 	fi
 
 	if [ ! -f ${TEMPDIR}/disk/opt/scripts/boot/generic-startup.sh ] ; then
@@ -1922,6 +1930,7 @@ while [ ! -z "$1" ] ; do
 	--a335-flasher)
 		oem_blank_eeprom="enable"
 		a335_flasher="enable"
+		uboot_eeprom="bbb_blank"
 		;;
 	--bp00-flasher)
 		oem_blank_eeprom="enable"
@@ -1950,14 +1959,17 @@ while [ ! -z "$1" ] ; do
 	--bbb-flasher|--emmc-flasher)
 		oem_blank_eeprom="enable"
 		emmc_flasher="enable"
+		uboot_eeprom="bbb_blank"
 		;;
 	--bbbl-flasher)
 		oem_blank_eeprom="enable"
 		bbbl_flasher="enable"
+		uboot_eeprom="bbbl_blank"
 		;;
 	--bbbw-flasher)
 		oem_blank_eeprom="enable"
 		bbbw_flasher="enable"
+		uboot_eeprom="bbbw_blank"
 		;;
 	--bbb-old-bootloader-in-emmc)
 		bbb_old_bootloader_in_emmc="enable"
@@ -1966,7 +1978,10 @@ while [ ! -z "$1" ] ; do
 		x15_force_revb_flash="enable"
 		;;
 	--am57xx-x15-flasher)
-		flasher_uboot="am57xx_evm_ti_flasher"
+		flasher_uboot="beagle_x15_flasher"
+		;;
+	--am57xx-x15-revc-flasher)
+		flasher_uboot="beagle_x15_revc_flasher"
 		;;
 	--am571x-sndrblock-flasher)
 		flasher_uboot="am571x_sndrblock_flasher"

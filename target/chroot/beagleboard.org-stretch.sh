@@ -22,7 +22,7 @@
 
 export LC_ALL=C
 
-u_boot_release="v2017.05"
+u_boot_release="v2017.09"
 u_boot_release_x15="ti-2017.01"
 
 #contains: rfs_username, release_date
@@ -195,7 +195,6 @@ install_pip_pkgs () {
 					sed -i -e 's:4.1.0:3.4.0:g' setup.py
 					python setup.py install
 				fi
-				pip install --upgrade PyBBIO
 				pip install iw_parse
 			fi
 		fi
@@ -299,6 +298,26 @@ install_git_repos () {
 	git_repo="https://github.com/StrawsonDesign/Robotics_Cape_Installer"
 	git_target_dir="/opt/source/Robotics_Cape_Installer"
 	git_clone
+
+	git_repo="https://github.com/mcdeoliveira/rcpy"
+	git_target_dir="/opt/source/rcpy"
+	git_clone
+	if [ -f ${git_target_dir}/.git/config ] ; then
+		cd ${git_target_dir}/
+		if [ -f /usr/bin/python3 ] && [ -f /usr/bin/easy_install ] ; then
+			/usr/bin/python3 setup.py install
+		fi
+	fi
+
+	git_repo="https://github.com/mcdeoliveira/pyctrl"
+	git_target_dir="/opt/source/pyctrl"
+	git_clone
+	if [ -f ${git_target_dir}/.git/config ] ; then
+		cd ${git_target_dir}/
+		if [ -f /usr/bin/python3 ] && [ -f /usr/bin/easy_install ] ; then
+			/usr/bin/python3 setup.py install
+		fi
+	fi
 
 	#beagle-tester
 	git_repo="https://github.com/jadonk/beagle-tester"

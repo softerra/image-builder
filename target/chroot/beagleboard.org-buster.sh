@@ -106,13 +106,8 @@ setup_desktop () {
 		echo "" >> ${wfile}
 		echo "Section \"Device\"" >> ${wfile}
 		echo "        Identifier      \"Builtin Default fbdev Device 0\"" >> ${wfile}
-
-#		echo "        Driver          \"modesetting\"" >> ${wfile}
-#		echo "        Option          \"AccelMethod\"   \"none\"" >> ${wfile}
 		echo "        Driver          \"fbdev\"" >> ${wfile}
-
 		echo "#HWcursor_false        Option          \"HWcursor\"          \"false\"" >> ${wfile}
-
 		echo "EndSection" >> ${wfile}
 		echo "" >> ${wfile}
 		echo "Section \"Screen\"" >> ${wfile}
@@ -132,7 +127,7 @@ setup_desktop () {
 	if [ -f ${wfile} ] ; then
 		echo "Patching: ${wfile}"
 		sed -i -e 's:#autologin-user=:autologin-user='$rfs_username':g' ${wfile}
-		sed -i -e 's:#autologin-session=UNIMPLEMENTED:autologin-session='$rfs_default_desktop':g' ${wfile}
+		sed -i -e 's:#autologin-session=:autologin-session='$rfs_default_desktop':g' ${wfile}
 		if [ -f /opt/scripts/3rdparty/xinput_calibrator_pointercal.sh ] ; then
 			sed -i -e 's:#display-setup-script=:display-setup-script=/opt/scripts/3rdparty/xinput_calibrator_pointercal.sh:g' ${wfile}
 		fi
@@ -140,8 +135,8 @@ setup_desktop () {
 
 	if [ ! "x${rfs_desktop_background}" = "x" ] ; then
 		mkdir -p /home/${rfs_username}/.config/ || true
-		if [ -d /opt/scripts/desktop-defaults/jessie/lxqt/ ] ; then
-			cp -rv /opt/scripts/desktop-defaults/jessie/lxqt/* /home/${rfs_username}/.config
+		if [ -d /opt/scripts/desktop-defaults/stretch/lxqt/ ] ; then
+			cp -rv /opt/scripts/desktop-defaults/stretch/lxqt/* /home/${rfs_username}/.config
 		fi
 		chown -R ${rfs_username}:${rfs_username} /home/${rfs_username}/.config/
 	fi
@@ -155,27 +150,6 @@ setup_desktop () {
 	echo "xset s off" >> ${wfile}
 	echo "xsetroot -cursor_name left_ptr" >> ${wfile}
 	chown -R ${rfs_username}:${rfs_username} ${wfile}
-
-#	#Disable LXDE's screensaver on autostart
-#	if [ -f /etc/xdg/lxsession/LXDE/autostart ] ; then
-#		sed -i '/xscreensaver/s/^/#/' /etc/xdg/lxsession/LXDE/autostart
-#	fi
-
-	#echo "CAPE=cape-bone-proto" >> /etc/default/capemgr
-
-#	#root password is blank, so remove useless application as it requires a password.
-#	if [ -f /usr/share/applications/gksu.desktop ] ; then
-#		rm -f /usr/share/applications/gksu.desktop || true
-#	fi
-
-#	#lxterminal doesnt reference .profile by default, so call via loginshell and start bash
-#	if [ -f /usr/bin/lxterminal ] ; then
-#		if [ -f /usr/share/applications/lxterminal.desktop ] ; then
-#			sed -i -e 's:Exec=lxterminal:Exec=lxterminal -l -e bash:g' /usr/share/applications/lxterminal.desktop
-#			sed -i -e 's:TryExec=lxterminal -l -e bash:TryExec=lxterminal:g' /usr/share/applications/lxterminal.desktop
-#		fi
-#	fi
-
 }
 
 install_pip_pkgs () {
@@ -195,7 +169,6 @@ install_pip_pkgs () {
 					sed -i -e 's:4.1.0:3.4.0:g' setup.py
 					python setup.py install
 				fi
-				pip install --upgrade PyBBIO
 				pip install iw_parse
 			fi
 		fi
@@ -255,11 +228,6 @@ install_git_repos () {
 	fi
 
 	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
-	git_target_dir="/opt/source/dtb-4.4-ti"
-	git_branch="4.4-ti"
-	git_clone_branch
-
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
 	git_target_dir="/opt/source/dtb-4.9-ti"
 	git_branch="4.9-ti"
 	git_clone_branch
@@ -300,6 +268,26 @@ install_git_repos () {
 	git_target_dir="/opt/source/Robotics_Cape_Installer"
 	git_clone
 
+	git_repo="https://github.com/mcdeoliveira/rcpy"
+	git_target_dir="/opt/source/rcpy"
+	git_clone
+	if [ -f ${git_target_dir}/.git/config ] ; then
+		cd ${git_target_dir}/
+		if [ -f /usr/bin/python3 ] && [ -f /usr/bin/easy_install ] ; then
+			/usr/bin/python3 setup.py install
+		fi
+	fi
+
+	git_repo="https://github.com/mcdeoliveira/pyctrl"
+	git_target_dir="/opt/source/pyctrl"
+	git_clone
+	if [ -f ${git_target_dir}/.git/config ] ; then
+		cd ${git_target_dir}/
+		if [ -f /usr/bin/python3 ] && [ -f /usr/bin/easy_install ] ; then
+			/usr/bin/python3 setup.py install
+		fi
+	fi
+
 	#beagle-tester
 	git_repo="https://github.com/jadonk/beagle-tester"
 	git_target_dir="/opt/source/beagle-tester"
@@ -318,11 +306,6 @@ install_git_repos () {
 	fi
 }
 
-install_build_pkgs () {
-	cd /opt/
-	cd /
-}
-
 other_source_links () {
 	rcn_https="https://rcn-ee.com/repos/git/u-boot-patches"
 
@@ -339,24 +322,6 @@ other_source_links () {
 	chown -R ${rfs_username}:${rfs_username} /opt/source/
 }
 
-unsecure_root () {
-	root_password=$(cat /etc/shadow | grep root | awk -F ':' '{print $2}')
-	sed -i -e 's:'$root_password'::g' /etc/shadow
-
-	if [ -f /etc/ssh/sshd_config ] ; then
-		#Make ssh root@beaglebone work..
-		sed -i -e 's:PermitEmptyPasswords no:PermitEmptyPasswords yes:g' /etc/ssh/sshd_config
-		sed -i -e 's:UsePAM yes:UsePAM no:g' /etc/ssh/sshd_config
-		#Starting with Jessie:
-		sed -i -e 's:PermitRootLogin without-password:PermitRootLogin yes:g' /etc/ssh/sshd_config
-	fi
-
-	if [ -f /etc/sudoers ] ; then
-		#Don't require password for sudo access
-		echo "${rfs_username}  ALL=NOPASSWD: ALL" >>/etc/sudoers
-	fi
-}
-
 is_this_qemu
 
 setup_system
@@ -370,7 +335,5 @@ if [ -f /usr/bin/git ] ; then
 	git config --global --unset-all user.email
 	git config --global --unset-all user.name
 fi
-#install_build_pkgs
 other_source_links
-#unsecure_root
 #
