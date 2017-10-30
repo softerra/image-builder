@@ -1,4 +1,4 @@
-def deploy = ['base': '/var/www/iotcrafter_images']
+def deploy = ['base': '/var/www/jenkins/board_images']
 
 properties([disableConcurrentBuilds(),
 			buildDiscarder(
