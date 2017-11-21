@@ -484,10 +484,13 @@ apt-get -y update
 
 echo iotc iotc/cpuid string BBB | debconf-set-selections
 echo iotc iotc/kernvers string ${repo_rcnee_pkg_version} | debconf-set-selections
-apt-get -y --allow-unauthenticated install iotc-core
+echo iotc iotc/load-overlays boolean false | debconf-set-selections
+
+apt-get -y --allow-unauthenticated install iotc-core iotc-ide
 dpkg-reconfigure -fnoninteractive -plow unattended-upgrades
 
-apt-get -y --allow-unauthenticated install iotc-ide
+# remove all iotc's settings
+echo PURGE | debconf-communicate iotc
 
 IOTC_INIT_REV=90079e35ba2ef0ee6c733158d30878a1f60aed02
 wget -P /opt/iotc/bin/ https://raw.githubusercontent.com/softerra/iotc_scripts/${IOTC_INIT_REV}/board/iotc_init.sh
