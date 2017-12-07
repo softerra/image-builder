@@ -475,10 +475,11 @@ npm config set unsafe-perm true
 npm install bower -g
 
 # add own repo
-# TODO: add repo key
 cat > /etc/apt/sources.list.d/iotcrafter.list <<EOF
 deb [arch=all,armhf] http://iotcrafter.com:8888/iotc/bbb jessie main
 EOF
+# add repo key
+wget -qO - http://iotcrafter.com:8888/iotc/iotcrafter.gpg.key | apt-key add -
 
 apt-get -y update
 
@@ -486,13 +487,13 @@ echo iotc iotc/cpuid string BBB | debconf-set-selections
 echo iotc iotc/kernvers string ${repo_rcnee_pkg_version} | debconf-set-selections
 echo iotc iotc/load-overlays boolean false | debconf-set-selections
 
-apt-get -y --allow-unauthenticated install iotc-core iotc-ide
+apt-get -y install iotc-core iotc-ide
 dpkg-reconfigure -fnoninteractive -plow unattended-upgrades
 
 # remove all iotc's settings
 echo PURGE | debconf-communicate iotc
 
-IOTC_INIT_REV=90079e35ba2ef0ee6c733158d30878a1f60aed02
+IOTC_INIT_REV=20b7318fc785804f6f76e6cafbeb3f53a896e9dc
 wget -P /opt/iotc/bin/ https://raw.githubusercontent.com/softerra/iotc_scripts/${IOTC_INIT_REV}/board/iotc_init.sh
 sed -i 's/^\(iotc_init_version=\).*$/\1"'${IOTC_INIT_REV}'"/' /opt/iotc/bin/iotc_init.sh
 chmod 755 /opt/iotc/bin/iotc_init.sh
