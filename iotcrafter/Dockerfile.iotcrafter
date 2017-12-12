@@ -33,3 +33,4 @@ RUN apt-get -y install \
 	&& rm -rf /var/lib/apt/lists/*
 
 VOLUME [ "/image-builder/ignore" ]
+VOLUME [ "/image-builder/git" ]

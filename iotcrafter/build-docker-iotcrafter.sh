@@ -44,7 +44,9 @@ if [ "$CONTAINER_RUNNING" != "" ]; then
 	exit 1
 fi
 
+# create dirs having respective docker volumes managed by original build scripts
 mkdir -p ignore
+mkdir -p git
 buildCommand="dpkg-reconfigure qemu-user-static && ./iotcrafter/build.sh; \
 				BUILD_RC=\$?; \
 				iotcrafter/postbuild.sh \$BUILD_RC"
@@ -90,6 +92,7 @@ else
 	wait
 fi
 
+rmdir git
 rmdir ignore
 
 build_rc=$(cat iotcrafter/build_rc)

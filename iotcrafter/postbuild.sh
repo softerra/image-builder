@@ -44,5 +44,5 @@ fi
 
 echo ${BUILD_RC} > iotcrafter/build_rc
 
-# restore parent's ownership to the dirs: deploy
-chown -R --reference=. deploy
+# restore parent's ownership to dirs and files
+chown -f -R --reference=. deploy latest_version .project
