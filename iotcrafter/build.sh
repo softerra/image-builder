@@ -118,7 +118,12 @@ cat > ${DIR}/deploy/setup_sdcard_populate_after_hook <<-__EOF__
     case "\${FUNCNAME[1]}" in
         populate_rootfs)
             sed -i 's/^cmdline=.*\$/& init=\/opt\/iotc\/bin\/iotc_init.sh/' \${TEMPDIR}/disk/boot/uEnv.txt
-            echo "uEnv.txt: init script defined"
+            sed -i 's/^dtb=/#dtb=/' \${TEMPDIR}/disk/boot/uEnv.txt
+            echo "/boot/uEnv.txt: init script defined, no override for default DTB ensured"
+
+            sed -i '/^loadall=/ifixfdt=echo IoTC: check \${fdtbase}..; if test \${fdtbase} = am335x-boneblack; then setenv fdtbase am335x-boneblack-emmc-overlay; setenv fdtfile am335x-boneblack-emmc-overlay.dtb; fi; if test \${fdtbase} = am335x-boneblack-wireless; then setenv fdtbase am335x-boneblack-wireless-emmc-overlay; setenv fdtfile am335x-boneblack-wireless-emmc-overlay.dtb; fi;' \${TEMPDIR}/disk/uEnv.txt
+            sed -i 's/^\(loadall=.*\)run loadxrd; run loadxfdt;\(.*\)$/\1run loadxrd; run fixfdt; run loadxfdt;\2/' \${TEMPDIR}/disk/uEnv.txt
+            echo "/uEnv.txt: DTB substitution defined"
         ;;
     esac
 __EOF__
