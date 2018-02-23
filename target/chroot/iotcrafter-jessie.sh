@@ -493,7 +493,7 @@ dpkg-reconfigure -fnoninteractive -plow unattended-upgrades
 # remove all iotc's settings
 echo PURGE | debconf-communicate iotc
 
-IOTC_INIT_REV=f25e0eec2434cf79c2b6c88ad923a584f12ee062
+IOTC_INIT_REV=805c08877d5fadd25e34741210b553a963598a1c
 wget -P /opt/iotc/bin/ https://raw.githubusercontent.com/softerra/iotc_scripts/${IOTC_INIT_REV}/board/iotc_init.sh
 sed -i 's/^\(iotc_init_version=\).*$/\1"'${IOTC_INIT_REV}'"/' /opt/iotc/bin/iotc_init.sh
 chmod 755 /opt/iotc/bin/iotc_init.sh
