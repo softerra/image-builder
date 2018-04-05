@@ -22,7 +22,7 @@
 
 export LC_ALL=C
 
-u_boot_release="v2017.09"
+u_boot_release="v2018.01"
 u_boot_release_x15="ti-2017.01"
 
 #contains: rfs_username, release_date
@@ -252,17 +252,18 @@ install_pip_pkgs () {
 			rm -f get-pip.py || true
 
 			if [ -f /usr/local/bin/pip ] ; then
-				echo "Installing pip packages"
-				git_repo="https://github.com/adafruit/adafruit-beaglebone-io-python.git"
-				git_target_dir="/opt/source/adafruit-beaglebone-io-python"
-				git_clone
-				if [ -f ${git_target_dir}/.git/config ] ; then
-					cd ${git_target_dir}/
-					sed -i -e 's:4.1.0:3.4.0:g' setup.py
-					python setup.py install
+				if [ -f /usr/bin/make ] ; then
+					echo "Installing pip packages"
+					git_repo="https://github.com/adafruit/adafruit-beaglebone-io-python.git"
+					git_target_dir="/opt/source/adafruit-beaglebone-io-python"
+					git_clone
+					if [ -f ${git_target_dir}/.git/config ] ; then
+						cd ${git_target_dir}/
+						sed -i -e 's:4.1.0:3.4.0:g' setup.py
+						python setup.py install
+					fi
+					pip install iw_parse
 				fi
-				pip install --upgrade PyBBIO
-				pip install iw_parse
 			fi
 		fi
 	fi
@@ -305,15 +306,6 @@ install_git_repos () {
 	git_target_dir="/opt/source/Userspace-Arduino"
 	git_clone
 
-	git_repo="https://github.com/cdsteinkuehler/beaglebone-universal-io.git"
-	git_target_dir="/opt/source/beaglebone-universal-io"
-	git_clone
-	if [ -f ${git_target_dir}/.git/config ] ; then
-		if [ -f ${git_target_dir}/config-pin ] ; then
-			ln -s ${git_target_dir}/config-pin /usr/local/bin/
-		fi
-	fi
-
 	git_repo="https://github.com/strahlex/BBIOConfig.git"
 	git_target_dir="/opt/source/BBIOConfig"
 	git_clone
@@ -348,12 +340,15 @@ install_git_repos () {
 	git_branch="4.4-ti"
 	git_clone_branch
 
-	if [ "x${image_type_mod}" = "x-bbb" ]; then
-		git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
-		git_target_dir="/opt/source/dtb-4.9-ti"
-		git_branch="4.9-ti"
-		git_clone_branch
-	fi
+	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
+	git_target_dir="/opt/source/dtb-4.9-ti"
+	git_branch="4.9-ti"
+	git_clone_branch
+
+	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
+	git_target_dir="/opt/source/dtb-4.14-ti"
+	git_branch="4.14-ti"
+	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/bb.org-overlays"
 	git_target_dir="/opt/source/bb.org-overlays"
