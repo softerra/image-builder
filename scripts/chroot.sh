@@ -450,7 +450,7 @@ if [ "x${deb_arch}" = "xarmhf" ] ; then
 	case "${deb_distribution}" in
 	debian)
 		case "${deb_codename}" in
-		jessie|stretch)
+		jessie)
 			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
 			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
 			sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
@@ -458,6 +458,12 @@ if [ "x${deb_arch}" = "xarmhf" ] ; then
 			sudo chown root:root "${tempdir}/lib/systemd/system/capemgr.service"
 			sudo cp "${OIB_DIR}/target/init_scripts/capemgr" "${tempdir}/etc/default/"
 			sudo chown root:root "${tempdir}/etc/default/capemgr"
+			distro="Debian"
+			;;
+		stretch|buster)
+			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
+			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
+			sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
 			distro="Debian"
 			;;
 		esac
@@ -474,9 +480,21 @@ if [ "x${deb_arch}" = "xarmhf" ] ; then
 			sudo chown root:root "${tempdir}/etc/default/capemgr"
 			distro="Ubuntu"
 			;;
+		bionic)
+			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
+			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
+			sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
+			distro="Ubuntu"
+			;;
 		esac
 		;;
 	esac
+fi
+
+if [ "x${deb_arch}" = "xarmel" ] ; then
+	sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
+	sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
+	distro="Debian"
 fi
 
 if [ -d "${tempdir}/usr/share/initramfs-tools/hooks/" ] ; then
@@ -555,8 +573,14 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		if [ "x\${deb_codename}" = "xstretch" ] ; then
 			apt_options=""
 		fi
+		if [ "x\${deb_codename}" = "xbuster" ] ; then
+			apt_options=""
+		fi
 		if [ "x\${deb_codename}" = "xxenial" ] ; then
 			apt_options="--allow-downgrades --allow-remove-essential --allow-change-held-packages"
+		fi
+		if [ "x\${deb_codename}" = "xbionic" ] ; then
+			apt_options=""
 		fi
 		echo "Log: (chroot): apt using extra: [\${apt_options}]"
 	}
@@ -691,6 +715,8 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 				echo "LANG=${rfs_default_locale}" > /etc/default/locale
 
+				echo "Log: (chroot): [locale -a]"
+				locale -a
 			fi
 		else
 			dpkg_package_missing
@@ -793,6 +819,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		cat /etc/group | grep ^cloud9ide || groupadd -r cloud9ide || true
 		cat /etc/group | grep ^gpio || groupadd -r gpio || true
 		cat /etc/group | grep ^pwm || groupadd -r pwm || true
+		cat /etc/group | grep ^eqep || groupadd -r eqep || true
 
 		echo "KERNEL==\"hidraw*\", GROUP=\"plugdev\", MODE=\"0660\"" > /etc/udev/rules.d/50-hidraw.rules
 		echo "KERNEL==\"spidev*\", GROUP=\"spi\", MODE=\"0660\"" > /etc/udev/rules.d/50-spi.rules
@@ -803,7 +830,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		echo "SUBSYSTEM==\"cmem\", GROUP=\"tisdk\", MODE=\"0660\"" > /etc/udev/rules.d/tisdk.rules
 		echo "SUBSYSTEM==\"rpmsg_rpc\", GROUP=\"tisdk\", MODE=\"0660\"" >> /etc/udev/rules.d/tisdk.rules
 
-		default_groups="admin,adm,cloud9ide,dialout,gpio,pwm,i2c,kmem,spi,cdrom,floppy,audio,dip,video,netdev,plugdev,bluetooth,users,systemd-journal,tisdk,weston-launch,xenomai"
+		default_groups="admin,adm,cloud9ide,dialout,gpio,pwm,eqep,i2c,kmem,spi,cdrom,floppy,audio,dip,video,netdev,plugdev,bluetooth,users,systemd-journal,tisdk,weston-launch,xenomai"
 
 		pkg="sudo"
 		dpkg_check
@@ -921,6 +948,9 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 					echo "/opt/scripts/ : ${rfs_opt_scripts}" >> /opt/source/list.txt
 					chown -R ${rfs_username}:${rfs_username} /opt/scripts/
 				fi
+				if [ -f /opt/scripts/boot/default/bb-boot ] ; then
+					cp -v /opt/scripts/boot/default/bb-boot /etc/default/
+				fi
 			fi
 
 		fi
@@ -942,7 +972,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 			#set our own initial date stamp, otherwise we get July 2014
 			touch /var/lib/systemd/clock
-			chown systemd-timesync:systemd-timesync /var/lib/systemd/clock
+			chown systemd-timesync:systemd-timesync /var/lib/systemd/clock || true
 
 			#Remove ntpdate
 			if [ -f /usr/sbin/ntpdate ] ; then
@@ -960,9 +990,19 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 			systemctl disable dnsmasq.service || true
 		fi
 
+		#We use, so make sure udhcpd is disabled at bootup...
+		if [ -f /lib/systemd/system/udhcpd.service ] ; then
+			systemctl disable udhcpd.service || true
+		fi
+
 		#Our kernels do not have ubuntu's ureadahead patches...
 		if [ -f /lib/systemd/system/ureadahead.service ] ; then
 			systemctl disable ureadahead.service || true
+		fi
+
+		#No guarntee we will have an active network connection...
+		if [ -f /lib/systemd/system/apt-daily.service ] ; then
+			systemctl disable apt-daily.service || true
 		fi
 	}
 
@@ -996,6 +1036,13 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		dpkg_package_missing
 	fi
 
+	pkg="c9-core-installer"
+	dpkg_check
+
+	if [ "x\${pkg_is_not_installed}" = "x" ] ; then
+		apt-mark hold c9-core-installer || true
+	fi
+
 	if [ -f /lib/systemd/systemd ] ; then
 		systemd_tweaks
 	fi
@@ -1012,33 +1059,33 @@ if [ "x${include_firmware}" = "xenable" ] ; then
 
 	if [ -d "${DIR}/git/linux-firmware/brcm/" ] ; then
 		sudo mkdir -p "${tempdir}/lib/firmware/brcm"
-		sudo cp -v "${DIR}/git/linux-firmware/LICENCE.broadcom_bcm43xx" "${tempdir}/lib/firmware/"
-		sudo cp -v "${DIR}"/git/linux-firmware/brcm/* "${tempdir}/lib/firmware/brcm"
+		sudo cp "${DIR}/git/linux-firmware/LICENCE.broadcom_bcm43xx" "${tempdir}/lib/firmware/"
+		sudo cp "${DIR}"/git/linux-firmware/brcm/* "${tempdir}/lib/firmware/brcm"
 	fi
 
 	if [ -f "${DIR}/git/linux-firmware/carl9170-1.fw" ] ; then
-		sudo cp -v "${DIR}/git/linux-firmware/carl9170-1.fw" "${tempdir}/lib/firmware/"
+		sudo cp "${DIR}/git/linux-firmware/carl9170-1.fw" "${tempdir}/lib/firmware/"
 	fi
 
 	if [ -f "${DIR}/git/linux-firmware/htc_9271.fw" ] ; then
-		sudo cp -v "${DIR}/git/linux-firmware/LICENCE.atheros_firmware" "${tempdir}/lib/firmware/"
-		sudo cp -v "${DIR}/git/linux-firmware/htc_9271.fw" "${tempdir}/lib/firmware/"
+		sudo cp "${DIR}/git/linux-firmware/LICENCE.atheros_firmware" "${tempdir}/lib/firmware/"
+		sudo cp "${DIR}/git/linux-firmware/htc_9271.fw" "${tempdir}/lib/firmware/"
 	fi
 
 	if [ -d "${DIR}/git/linux-firmware/rtlwifi/" ] ; then
 		sudo mkdir -p "${tempdir}/lib/firmware/rtlwifi"
-		sudo cp -v "${DIR}/git/linux-firmware/LICENCE.rtlwifi_firmware.txt" "${tempdir}/lib/firmware/"
-		sudo cp -v "${DIR}"/git/linux-firmware/rtlwifi/* "${tempdir}/lib/firmware/rtlwifi"
+		sudo cp "${DIR}/git/linux-firmware/LICENCE.rtlwifi_firmware.txt" "${tempdir}/lib/firmware/"
+		sudo cp "${DIR}"/git/linux-firmware/rtlwifi/* "${tempdir}/lib/firmware/rtlwifi"
 	fi
 
 	if [ -d "${DIR}/git/linux-firmware/ti-connectivity/" ] ; then
 		sudo mkdir -p "${tempdir}/lib/firmware/ti-connectivity"
-		sudo cp -v "${DIR}/git/linux-firmware/LICENCE.ti-connectivity" "${tempdir}/lib/firmware/"
-		sudo cp -v "${DIR}"/git/linux-firmware/ti-connectivity/* "${tempdir}/lib/firmware/ti-connectivity"
+		sudo cp "${DIR}/git/linux-firmware/LICENCE.ti-connectivity" "${tempdir}/lib/firmware/"
+		sudo cp "${DIR}"/git/linux-firmware/ti-connectivity/* "${tempdir}/lib/firmware/ti-connectivity"
 	fi
 
 	if [ -f "${DIR}/git/linux-firmware/mt7601u.bin" ] ; then
-		sudo cp -v "${DIR}/git/linux-firmware/mt7601u.bin" "${tempdir}/lib/firmware/mt7601u.bin"
+		sudo cp "${DIR}/git/linux-firmware/mt7601u.bin" "${tempdir}/lib/firmware/mt7601u.bin"
 	fi
 fi
 

@@ -14,10 +14,10 @@ fi
 
 #./RootStock-NG.sh -c bb.org-debian-jessie-oemflasher
 
-  debian_jessie_lxqt_2gb="debian-8.9-lxqt-2gb-armhf-${time}"
-  debian_jessie_lxqt_4gb="debian-8.9-lxqt-4gb-armhf-${time}"
-   debian_jessie_console="debian-8.9-console-armhf-${time}"
-debian_jessie_oemflasher="debian-8.9-oemflasher-armhf-${time}"
+  debian_jessie_lxqt_2gb="debian-8.10-lxqt-2gb-armhf-${time}"
+  debian_jessie_lxqt_4gb="debian-8.10-lxqt-4gb-armhf-${time}"
+   debian_jessie_console="debian-8.10-console-armhf-${time}"
+debian_jessie_oemflasher="debian-8.10-oemflasher-armhf-${time}"
 
 archive="xz -z -8"
 
@@ -84,10 +84,6 @@ copy_img_to_mirror () {
                         mkdir -p ${mirror_dir}/${time}/\${blend}/ || true
                 fi
                 if [ -d ${mirror_dir}/${time}/\${blend}/ ] ; then
-                        if [ -f \${wfile}.bmap ] ; then
-                                mv -v \${wfile}.bmap ${mirror_dir}/${time}/\${blend}/
-                                sync
-                        fi
                         if [ ! -f ${mirror_dir}/${time}/\${blend}/\${wfile}.img.zx ] ; then
                                 mv -v \${wfile}.img ${mirror_dir}/${time}/\${blend}/
                                 sync
@@ -105,11 +101,6 @@ copy_img_to_mirror () {
 
 archive_img () {
         if [ -f \${wfile}.img ] ; then
-                if [ ! -f \${wfile}.bmap ] ; then
-                        if [ -f /usr/bin/bmaptool ] ; then
-                                bmaptool create -o \${wfile}.bmap \${wfile}.img
-                        fi
-                fi
                 copy_img_to_mirror
         fi
 }

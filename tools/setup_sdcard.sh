@@ -66,7 +66,7 @@ is_element_of () {
 #
 #########################################################################
 
-VALID_ROOTFS_TYPES="ext2 ext3 ext4"
+VALID_ROOTFS_TYPES="ext2 ext3 ext4 btrfs"
 
 is_valid_rootfs_type () {
 	if is_element_of $1 "${VALID_ROOTFS_TYPES}" ] ; then
@@ -1130,10 +1130,6 @@ populate_rootfs () {
 			fi
 			cp -v "${oem_flasher_img}" "${TEMPDIR}/disk/opt/emmc/"
 			sync
-			if [ ! "x${oem_flasher_bmap}" = "x" ] ; then
-				cp -v "${oem_flasher_bmap}" "${TEMPDIR}/disk/opt/emmc/"
-				sync
-			fi
 			if [ ! "x${oem_flasher_eeprom}" = "x" ] ; then
 				cp -v "${oem_flasher_eeprom}" "${TEMPDIR}/disk/opt/emmc/"
 				sync
@@ -1176,6 +1172,10 @@ populate_rootfs () {
 		echo "uname_r=${select_kernel}" >> ${wfile}
 	else
 		echo "uname_r=${kernel_override}" >> ${wfile}
+	fi
+
+	if [ "${BTRFS_FSTAB}" ] ; then
+		echo "mmcrootfstype=btrfs rootwait" >> ${wfile}
 	fi
 
 	echo "#uuid=" >> ${wfile}
@@ -1254,15 +1254,31 @@ populate_rootfs () {
 			echo "#disable_uboot_overlay_adc=1" >> ${wfile}
 			echo "###" >> ${wfile}
 			echo "###PRUSS OPTIONS" >> ${wfile}
+			unset use_pru_uio
 			if [ "x${uboot_pru_rproc_44ti}" = "xenable" ] ; then
 				echo "###pru_rproc (4.4.x-ti kernel)" >> ${wfile}
 				echo "uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo" >> ${wfile}
-				echo "###pru_uio (4.4.x-ti & mainline/bone kernel)" >> ${wfile}
+				#echo "###pru_rproc (4.9.x-ti kernel)" >> ${wfile}
+				#echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-9-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_uio (4.4.x-ti, 4.14.x-ti & mainline/bone kernel)" >> ${wfile}
 				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo" >> ${wfile}
-			else
+				use_pru_uio="blocked"
+			fi
+			if [ "x${uboot_pru_rproc_49ti}" = "xenable" ] ; then
 				echo "###pru_rproc (4.4.x-ti kernel)" >> ${wfile}
 				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo" >> ${wfile}
-				echo "###pru_uio (4.4.x-ti & mainline/bone kernel)" >> ${wfile}
+				#echo "###pru_rproc (4.9.x-ti kernel)" >> ${wfile}
+				#echo "uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-9-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_uio (4.4.x-ti, 4.14.x-ti & mainline/bone kernel)" >> ${wfile}
+				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo" >> ${wfile}
+				use_pru_uio="blocked"
+			fi
+			if [ "x${use_pru_uio}" = "x" ] ; then
+				echo "###pru_rproc (4.4.x-ti kernel)" >> ${wfile}
+				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo" >> ${wfile}
+				#echo "###pru_rproc (4.9.x-ti kernel)" >> ${wfile}
+				#echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-9-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_uio (4.4.x-ti, 4.14.x-ti & mainline/bone kernel)" >> ${wfile}
 				echo "uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo" >> ${wfile}
 			fi
 			echo "###" >> ${wfile}
@@ -1279,7 +1295,7 @@ populate_rootfs () {
 			echo "#disable_uboot_overlay_addr2=1" >> ${wfile}
 			echo "#disable_uboot_overlay_addr3=1" >> ${wfile}
 			echo "###" >> ${wfile}
-			echo "###U-Boot fdt tweaks..." >> ${wfile}
+			echo "###U-Boot fdt tweaks... (60000 = 384KB)" >> ${wfile}
 			echo "#uboot_fdt_buffer=0x60000" >> ${wfile}
 			echo "###U-Boot Overlays###" >> ${wfile}
 
@@ -1288,10 +1304,6 @@ populate_rootfs () {
 	fi
 
 	cmdline="coherent_pool=1M net.ifnames=0 quiet"
-	if [ "x${enable_systemd}" = "xenabled" ] ; then
-		cmdline="${cmdline} init=/lib/systemd/systemd"
-	fi
-
 	if [ "x${enable_cape_universal}" = "xenable" ] ; then
 		cmdline="${cmdline} cape_universal=enable"
 	fi
@@ -1313,19 +1325,7 @@ populate_rootfs () {
 		echo "" >> ${wfile}
 	fi
 
-	if [ "x${conf_board}" = "xam335x_boneblack" ] || [ "x${conf_board}" = "xam335x_evm" ] ; then
-		echo "##Example v3.8.x" >> ${wfile}
-		echo "#cape_disable=capemgr.disable_partno=" >> ${wfile}
-		echo "#cape_enable=capemgr.enable_partno=" >> ${wfile}
-		echo "" >> ${wfile}
-	fi
-
 	if [ "x${conf_board}" = "xam335x_boneblack" ] || [ "x${conf_board}" = "xam335x_evm" ] || [ "x${conf_board}" = "xam335x_blank_bbbw" ] ; then
-		echo "##Example v4.1.x" >> ${wfile}
-		echo "#cape_disable=bone_capemgr.disable_partno=" >> ${wfile}
-		echo "#cape_enable=bone_capemgr.enable_partno=" >> ${wfile}
-		echo "" >> ${wfile}
-
 		if [ ! "x${has_post_uenvtxt}" = "x" ] ; then
 			cat "${DIR}/post-uEnv.txt" >> ${wfile}
 			echo "" >> ${wfile}
@@ -1437,30 +1437,14 @@ populate_rootfs () {
 			echo "#" >> ${wfile}
 			echo "${rootfs_var_drive}  /var  ${ROOTFS_TYPE}  noatime  0  2" >> ${wfile}
 		else
-			echo "${rootfs_drive}  /  ${ROOTFS_TYPE}  noatime,errors=remount-ro  0  1" >> ${wfile}
-		fi
-
-		echo "debugfs  /sys/kernel/debug  debugfs  defaults  0  0" >> ${wfile}
-
-		if [ "x${distro}" = "xDebian" ] ; then
-			#/etc/inittab is gone in Jessie with systemd...
-			if [ -f ${TEMPDIR}/disk/etc/inittab ] ; then
-				wfile="${TEMPDIR}/disk/etc/inittab"
-				serial_num=$(echo -n "${SERIAL}"| tail -c -1)
-				echo "" >> ${wfile}
-				echo "T${serial_num}:23:respawn:/sbin/getty -L ${SERIAL} 115200 vt102" >> ${wfile}
-				echo "" >> ${wfile}
+			if [ "${BTRFS_FSTAB}" ] ; then
+				echo "${rootfs_drive}  /  btrfs  defaults,noatime  0  1" >> ${wfile}
+			else
+				echo "${rootfs_drive}  /  ${ROOTFS_TYPE}  noatime,errors=remount-ro  0  1" >> ${wfile}
 			fi
 		fi
 
-		if [ "x${distro}" = "xUbuntu" ] ; then
-			wfile="${TEMPDIR}/disk/etc/init/serial.conf"
-			echo "start on stopped rc RUNLEVEL=[2345]" > ${wfile}
-			echo "stop on runlevel [!2345]" >> ${wfile}
-			echo "" >> ${wfile}
-			echo "respawn" >> ${wfile}
-			echo "exec /sbin/getty 115200 ${SERIAL}" >> ${wfile}
-		fi
+		echo "debugfs  /sys/kernel/debug  debugfs  defaults  0  0" >> ${wfile}
 
 		if [ "x${DISABLE_ETH}" != "xskip" ] ; then
 			wfile="${TEMPDIR}/disk/etc/network/interfaces"
@@ -1684,8 +1668,6 @@ populate_rootfs () {
 			wfile="${imagename}.xz.job.txt"
 			echo "abi=aaa" > ${wfile}
 			echo "conf_image=${imagename}.xz" >> ${wfile}
-			bmapimage=$(echo ${imagename} | awk -F ".img" '{print $1}')
-			echo "conf_bmap=${bmapimage}.bmap" >> ${wfile}
 			echo "conf_resize=enable" >> ${wfile}
 			echo "conf_partition1_startmb=${conf_boot_startmb}" >> ${wfile}
 
@@ -1693,7 +1675,7 @@ populate_rootfs () {
 			fat)
 				echo "conf_partition1_fstype=0xE" >> ${wfile}
 				;;
-			ext2|ext3|ext4)
+			ext2|ext3|ext4|btrfs)
 				echo "conf_partition1_fstype=0x83" >> ${wfile}
 				;;
 			esac
@@ -1767,7 +1749,7 @@ process_dtb_conf () {
 	fat)
 		sfdisk_fstype="0xE"
 		;;
-	ext2|ext3|ext4)
+	ext2|ext3|ext4|btrfs)
 		sfdisk_fstype="L"
 		;;
 	*)
@@ -1994,10 +1976,6 @@ while [ ! -z "$1" ] ; do
 		checkparm $2
 		oem_flasher_img="$2"
 		;;
-	--oem-flasher-bmap)
-		checkparm $2
-		oem_flasher_bmap="$2"
-		;;
 	--oem-flasher-eeprom)
 		checkparm $2
 		oem_flasher_eeprom="$2"
@@ -2007,7 +1985,7 @@ while [ ! -z "$1" ] ; do
 		oem_flasher_job="$2"
 		;;
 	--enable-systemd)
-		enable_systemd="enabled"
+		echo "--enable-systemd: option is depreciated (enabled by default Jessie+)"
 		;;
 	--enable-cape-universal)
 		enable_cape_universal="enable"
@@ -2017,6 +1995,9 @@ while [ ! -z "$1" ] ; do
 		;;
 	--enable-uboot-pru-rproc-44ti)
 		uboot_pru_rproc_44ti="enable"
+		;;
+	--enable-uboot-pru-rproc-49ti)
+		uboot_pru_rproc_49ti="enable"
 		;;
 	--offline)
 		offline=1
@@ -2056,6 +2037,28 @@ if ! is_valid_rootfs_type ${ROOTFS_TYPE} ; then
 	echo "ERROR: ${ROOTFS_TYPE} is not a valid root filesystem type"
 	echo "Valid types: ${VALID_ROOTFS_TYPES}"
 	exit
+fi
+
+unset BTRFS_FSTAB
+if [ "x${ROOTFS_TYPE}" = "xbtrfs" ] ; then
+	unset NEEDS_COMMAND
+	check_for_command mkfs.btrfs btrfs-tools
+
+	if [ "${NEEDS_COMMAND}" ] ; then
+		echo ""
+		echo "Your system is missing the btrfs dependency needed for this particular target."
+		echo "Ubuntu/Debian: sudo apt-get install btrfs-tools"
+		echo "Fedora: as root: yum install btrfs-progs"
+		echo "Gentoo: emerge btrfs-progs"
+		echo ""
+		exit
+	fi
+
+	BTRFS_FSTAB=1
+
+	if [ ! "x${conf_boot_fstype}" = "xfat" ] ; then
+		conf_boot_fstype="btrfs"
+	fi
 fi
 
 find_issue

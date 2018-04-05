@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2014-2016 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2014-2017 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
 
 export LC_ALL=C
 
-u_boot_release="v2017.09"
+u_boot_release="v2018.01"
 u_boot_release_x15="ti-2017.01"
 
 #contains: rfs_username, release_date
@@ -186,16 +186,18 @@ install_pip_pkgs () {
 			rm -f get-pip.py || true
 
 			if [ -f /usr/local/bin/pip ] ; then
-				echo "Installing pip packages"
-				git_repo="https://github.com/adafruit/adafruit-beaglebone-io-python.git"
-				git_target_dir="/opt/source/adafruit-beaglebone-io-python"
-				git_clone
-				if [ -f ${git_target_dir}/.git/config ] ; then
-					cd ${git_target_dir}/
-					sed -i -e 's:4.1.0:3.4.0:g' setup.py
-					python setup.py install
+				if [ -f /usr/bin/make ] ; then
+					echo "Installing pip packages"
+					git_repo="https://github.com/adafruit/adafruit-beaglebone-io-python.git"
+					git_target_dir="/opt/source/adafruit-beaglebone-io-python"
+					git_clone
+					if [ -f ${git_target_dir}/.git/config ] ; then
+						cd ${git_target_dir}/
+						sed -i -e 's:4.1.0:3.4.0:g' setup.py
+						python setup.py install
+					fi
+					pip install iw_parse
 				fi
-				pip install iw_parse
 			fi
 		fi
 	fi
@@ -218,6 +220,26 @@ install_git_repos () {
 				rm -rf /var/www/html/index.html || true
 			fi
 		fi
+	fi
+
+	if [ -f /var/www/html/index.nginx-debian.html ] ; then
+		rm -rf /var/www/html/index.nginx-debian.html || true
+
+		echo "diff --git a/etc/nginx/sites-available/default b/etc/nginx/sites-available/default" > /tmp/nginx.patch
+		echo "index c841ceb..4f977d8 100644" >> /tmp/nginx.patch
+		echo "--- a/etc/nginx/sites-available/default" >> /tmp/nginx.patch
+		echo "+++ b/etc/nginx/sites-available/default" >> /tmp/nginx.patch
+		echo "@@ -49,6 +49,7 @@ server {" >> /tmp/nginx.patch
+		echo -e " \t\t# First attempt to serve request as file, then" >> /tmp/nginx.patch
+		echo -e " \t\t# as directory, then fall back to displaying a 404." >> /tmp/nginx.patch
+		echo -e " \t\ttry_files \$uri \$uri/ =404;" >> /tmp/nginx.patch
+		echo -e "+\t\tautoindex on;" >> /tmp/nginx.patch
+		echo -e " \t}" >> /tmp/nginx.patch
+		echo " " >> /tmp/nginx.patch
+		echo -e " \t# pass PHP scripts to FastCGI server" >> /tmp/nginx.patch
+
+		cd /
+		patch -p1 < /tmp/nginx.patch
 	fi
 
 	git_repo="https://github.com/prpplague/Userspace-Arduino"
@@ -261,6 +283,11 @@ install_git_repos () {
 	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
 	git_target_dir="/opt/source/dtb-4.9-ti"
 	git_branch="4.9-ti"
+	git_clone_branch
+
+	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
+	git_target_dir="/opt/source/dtb-4.14-ti"
+	git_branch="4.14-ti"
 	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/bb.org-overlays"
@@ -337,11 +364,6 @@ install_git_repos () {
 	fi
 }
 
-install_build_pkgs () {
-	cd /opt/
-	cd /
-}
-
 other_source_links () {
 	rcn_https="https://rcn-ee.com/repos/git/u-boot-patches"
 
@@ -390,7 +412,6 @@ if [ -f /usr/bin/git ] ; then
 	git config --global --unset-all user.email
 	git config --global --unset-all user.name
 fi
-#install_build_pkgs
 other_source_links
 #unsecure_root
 #

@@ -14,19 +14,20 @@ if [ ! -f jenkins.build ] ; then
 ./RootStock-NG.sh -c rcn-ee_console_debian_stretch_armhf
 ./RootStock-NG.sh -c rcn-ee_console_debian_buster_armhf
 ./RootStock-NG.sh -c rcn-ee_console_ubuntu_xenial_armhf
+./RootStock-NG.sh -c rcn-ee_console_ubuntu_bionic_armhf
 else
 	mkdir -p ${DIR}/deploy/ || true
 fi
 
- debian_stable="debian-9.1-console-armhf-${time}"
+ debian_stable="debian-9.3-console-armhf-${time}"
 debian_testing="debian-buster-console-armhf-${time}"
- ubuntu_stable="ubuntu-16.04.3-console-armhf-${time}"
-#ubuntu_testing="ubuntu-16.04.3-console-armhf-${time}"
+ ubuntu_stable="ubuntu-16.04.4-console-armhf-${time}"
+ubuntu_testing="ubuntu-bionic-console-armhf-${time}"
 
 xz_img="xz -z -8"
 xz_tar="xz -T2 -z -8"
 
-beaglebone="--dtb beaglebone --rootfs_label rootfs --enable-cape-universal --enable-uboot-cape-overlays --enable-uboot-pru-rproc-44ti"
+beaglebone="--dtb beaglebone --rootfs_label rootfs --enable-cape-universal --enable-uboot-cape-overlays"
 
 omap3_beagle_xm="--dtb omap3-beagle-xm --rootfs_label rootfs"
 omap5_uevm="--dtb omap5-uevm --rootfs_label rootfs"
@@ -92,10 +93,6 @@ copy_img_to_mirror () {
                         mkdir -p ${mirror_dir}/${time}/\${blend}/ || true
                 fi
                 if [ -d ${mirror_dir}/${time}/\${blend}/ ] ; then
-                        if [ -f \${wfile}.bmap ] ; then
-                                mv -v \${wfile}.bmap ${mirror_dir}/${time}/\${blend}/
-                                sync
-                        fi
                         if [ ! -f ${mirror_dir}/${time}/\${blend}/\${wfile}.img.zx ] ; then
                                 mv -v \${wfile}.img ${mirror_dir}/${time}/\${blend}/
                                 sync
@@ -113,11 +110,6 @@ copy_img_to_mirror () {
 
 archive_img () {
         if [ -f \${wfile}.img ] ; then
-                if [ ! -f \${wfile}.bmap ] ; then
-                        if [ -f /usr/bin/bmaptool ] ; then
-                                bmaptool create -o \${wfile}.bmap \${wfile}.img
-                        fi
-                fi
                 copy_img_to_mirror
         fi
 }
@@ -158,7 +150,7 @@ options="--img omap5-uevm-\${base_rootfs}         ${omap5_uevm}"                
 base_rootfs="${debian_stable}"  ; blend="elinux" ; archive_base_rootfs
 base_rootfs="${ubuntu_stable}"  ; blend="elinux" ; archive_base_rootfs
 base_rootfs="${debian_testing}" ; blend="elinux" ; archive_base_rootfs
-#base_rootfs="${ubuntu_testing}" ; blend="elinux" ; archive_base_rootfs
+base_rootfs="${ubuntu_testing}" ; blend="elinux" ; archive_base_rootfs
 
 #Archive img:
 base_rootfs="${debian_stable}" ; blend="microsd"

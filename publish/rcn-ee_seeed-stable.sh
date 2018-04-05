@@ -21,14 +21,14 @@ fi
 ./RootStock-NG.sh -c seeed-debian-jessie-lxqt-4gb-v4.4
 ./RootStock-NG.sh -c seeed-debian-jessie-iot-v4.4
 
-    debian_jessie_machinekit="debian-8.9-machinekit-armhf-${time}"
-      debian_jessie_lxqt_2gb="debian-8.9-lxqt-2gb-armhf-${time}"
-      debian_jessie_lxqt_4gb="debian-8.9-lxqt-4gb-armhf-${time}"
-           debian_jessie_iot="debian-8.9-iot-armhf-${time}"
-       debian_jessie_console="debian-8.9-console-armhf-${time}"
-    debian_jessie_oemflasher="debian-8.9-oemflasher-armhf-${time}"
-debian_jessie_seeed_lxqt_4gb="debian-8.9-seeed-lxqt-4gb-armhf-${time}"
-     debian_jessie_seeed_iot="debian-8.9-seeed-iot-armhf-${time}"
+    debian_jessie_machinekit="debian-8.10-machinekit-armhf-${time}"
+      debian_jessie_lxqt_2gb="debian-8.10-lxqt-2gb-armhf-${time}"
+      debian_jessie_lxqt_4gb="debian-8.10-lxqt-4gb-armhf-${time}"
+           debian_jessie_iot="debian-8.10-iot-armhf-${time}"
+       debian_jessie_console="debian-8.10-console-armhf-${time}"
+    debian_jessie_oemflasher="debian-8.10-oemflasher-armhf-${time}"
+debian_jessie_seeed_lxqt_4gb="debian-8.10-seeed-lxqt-4gb-armhf-${time}"
+     debian_jessie_seeed_iot="debian-8.10-seeed-iot-armhf-${time}"
 
 archive="xz -z -8"
 
@@ -87,10 +87,6 @@ copy_img_to_mirror () {
                         mkdir -p ${mirror_dir}/${time}/\${blend}/ || true
                 fi
                 if [ -d ${mirror_dir}/${time}/\${blend}/ ] ; then
-                        if [ -f \${wfile}.bmap ] ; then
-                                mv -v \${wfile}.bmap ${mirror_dir}/${time}/\${blend}/
-                                sync
-                        fi
                         if [ ! -f ${mirror_dir}/${time}/\${blend}/\${wfile}.img.zx ] ; then
                                 mv -v \${wfile}.img ${mirror_dir}/${time}/\${blend}/
                                 sync
@@ -108,11 +104,6 @@ copy_img_to_mirror () {
 
 archive_img () {
         if [ -f \${wfile}.img ] ; then
-                if [ ! -f \${wfile}.bmap ] ; then
-                        if [ -f /usr/bin/bmaptool ] ; then
-                                bmaptool create -o \${wfile}.bmap \${wfile}.img
-                        fi
-                fi
                 copy_img_to_mirror
         fi
 }
