@@ -1,20 +1,32 @@
 def deploy = ['base': '/var/www/jenkins/board_images',
 				'old_base': '/var/www/iotcrafter_images' ]
 
+// Image naming:
+// <git-descr>-<config-id>-<debian-name>-iotcrafter.img
+// git-descr - tag+offset,
+// config-id - coded features of the config, e.g. kernel version, nodejs version etc - v4.4n6, v4.9
+// debian-name - jessie|stretch..
+// Image deployment:
+// <base>/<branch-id>/<config-id>/date/<img>
+// branch-id - almost respective to debian-name, e.g. 'old', 'stable', 'next' or 'stable', 'dev'
+
 properties([disableConcurrentBuilds(),
 			buildDiscarder(
 				logRotator(artifactDaysToKeepStr: '',
 						artifactNumToKeepStr: '',
 						daysToKeepStr: '',
-						numToKeepStr: '2')),
+						numToKeepStr: '10')),
 			parameters([
 				string(defaultValue: '', description: '', name: 'bsRepo'),
 				string(defaultValue: '', description: '', name: 'buildGitCommit'),
 				string(defaultValue: '', description: 'build identification string', name: 'buildInfo'),
 
-				booleanParam(defaultValue: false, description: '', name: 'isRelease'),
+				booleanParam(defaultValue: false, description: 'make a copy for old installer', name: 'isOldRelease'),
 
 				string(defaultValue: '', description: 'image-builder configuration', name: 'buildConfig'),
+
+				string(defaultValue: 'unknown', description: 'deployment branch-id', name: 'branchId'),
+				string(defaultValue: 'default', description: 'deployment config-id', name: 'configId'),
             ]),
             pipelineTriggers([])
         ])
@@ -33,10 +45,6 @@ node {
 		error('buildInfo arg is required')
 	}
 
-	//def buildSuffix = params.isRelease ? '' : '/current'
-	def buildSuffix = ''
-	deploy.base += buildSuffix
-
 	def scmVars = []
 
 	def imgName = params.buildInfo
@@ -53,7 +61,6 @@ node {
 		scmInfo['extensions'].push([$class: 'CleanBeforeCheckout'])
 
 		scmVars = checkout(scmInfo)
-
 
 		dir('image-builder') {
 			if (params.buildConfig == '') {
@@ -78,26 +85,29 @@ EOF
 		dir('image-builder/deploy/') {
 			sh """#!/bin/bash
 				CUR_DATE=\$(date +%Y-%m-%d)
-				mkdir -p ${deploy['base']}/\${CUR_DATE}
+				TAG_DIR="${deploy['base']}/${params.branchId}/${params.configId}/\${CUR_DATE}"
+				mkdir -p \${TAG_DIR}
 
 				. image-builder.project
 
 				# TODO: use normal names of images in the installer
 				IMG_FNAME=\$(ls *-iotcrafter-*.img)
-				RESULT_IMG_FNAME="${imgName}-\${deb_codename}-iotcrafter.img"
-				RESULT_ZIP_FNAME="${imgName}-\${deb_codename}-iotcrafter.zip"
+				RESULT_IMG_FNAME="${imgName}-${params.configId}-\${deb_codename}-iotcrafter.img"
+				RESULT_ZIP_FNAME="${imgName}-${params.configId}-\${deb_codename}-iotcrafter.zip"
 
 				mv -f \$IMG_FNAME \$RESULT_IMG_FNAME
 				zip -9 \$RESULT_ZIP_FNAME \$RESULT_IMG_FNAME
 
 				sha256sum \$RESULT_ZIP_FNAME > \${RESULT_ZIP_FNAME}.sha256sum
 
-				cp -f \$RESULT_ZIP_FNAME ${deploy['base']}/\${CUR_DATE}/
-				cp -f \${RESULT_ZIP_FNAME}.sha256sum ${deploy['base']}/\${CUR_DATE}/
+				cp -f \$RESULT_ZIP_FNAME \$TAG_DIR
+				cp -f \${RESULT_ZIP_FNAME}.sha256sum \$TAG_DIR
 
-				if [ "${params.isRelease}" = "true" ]; then
+				# deploy img for old installer
+				if [ "${params.isOldRelease}" = "true" ]; then
 					mkdir -p ${deploy['old_base']}/\${CUR_DATE}
 
+					echo "Installing img for old installer"
 					mv -f \$RESULT_IMG_FNAME bbb.img
 					zip -9 bbb.img.zip bbb.img
 					rm -f bbb.img
