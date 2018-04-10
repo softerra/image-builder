@@ -16,9 +16,7 @@ if [ -z "${IMG_NAME}" ]; then
 fi
 
 cat > "${DIR}/chroot_after_hook" <<-__EOF__
-# add our overlays
-sudo cp -f ${DIR}/target/iotcrafter/dtbo/*.dtbo \${tempdir}/lib/firmware/
-# remove self
+. ${DIR}/iotcrafter/setup_kernel_modules.sh
 rm -f ${DIR}/chroot_after_hook
 __EOF__
 

@@ -48,12 +48,6 @@ if [ -z "${IMG_NAME}" ]; then
 	IMG_NAME=iotcrafter-debian-jessie-v4.4
 fi
 
-kernelMount=""
-if [ -n "${IOTCRAFTER_KERNEL_DIR}" ]; then
-	mkdir -p ${IOTCRAFTER_KERNEL_DIR}
-	kernelMount="-v ${IOTCRAFTER_KERNEL_DIR}:${IOTCRAFTER_KERNEL_DIR}"
-fi
-
 CONTAINER_NAME="${BUILD_SYS}_${DOCKER_CONTAINER_SUFFIX}_work"
 CONTINUE=${CONTINUE:-0}
 CONTAINER_EXISTS=$($DOCKER ps -a --filter name="$CONTAINER_NAME" -q)
@@ -80,7 +74,6 @@ if [ "$CONTAINER_EXISTS" != "" ] && [ "$CONTINUE" = "1" ]; then
 		--volumes-from="${CONTAINER_NAME}" \
 		--name "${CONTAINER_NAME}_cont" \
 		-e IMG_NAME=${IMG_NAME} \
-		${kernelMount} \
 		-v "$(pwd):/${BUILD_SYS}" -w "/${BUILD_SYS}" \
 		$DOCKER_IMG:$DOCKER_IMG_TAG \
 		bash -o pipefail -c "${buildCommand}" &
@@ -104,7 +97,6 @@ else
 	time $DOCKER run --privileged \
 		--name "${CONTAINER_NAME}" \
 		-e IMG_NAME=${IMG_NAME} \
-		${kernelMount} \
 		-v "$(pwd):/${BUILD_SYS}" -w "/${BUILD_SYS}" \
 		$DOCKER_IMG:$DOCKER_IMG_TAG \
 		bash -o pipefail -c "${buildCommand}" &
