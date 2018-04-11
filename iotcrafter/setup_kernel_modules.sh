@@ -30,8 +30,9 @@ EOF
 mkdir -p apt-tmp/lists/partial
 touch apt-tmp/status
 
+echo "tempdir=${tempdir}"
 # setup sources for the kernel packages
-grep rcn-ee ${temp_dir}/etc/apt/sources.list > ./sources.list
+grep rcn-ee ${tempdir}/etc/apt/sources.list > ./sources.list
 echo "Using temporary APT sources: "
 cat ./sources.list
 
@@ -43,7 +44,7 @@ echo "Unpacking kernel headers package is: ${iotc__pkg_file}"
 
 dpkg-deb -x ${iotc__pkg_file} .
 
-iotc_kernel_dir=${iotc__work_dir}/usr/src/linux-headers-${repo_rcnee_pkg_version}
+iotc__kernel_dir=${iotc__work_dir}/usr/src/linux-headers-${repo_rcnee_pkg_version}
 
 ##
 ## Download iotc sources, build and install
@@ -62,7 +63,7 @@ if [ "$iotc_modules" != "" ]; then
 	echo "Downloading iotcrafter modules"
 	for m in $iotc_modules; do
 		# cleanup
-		#rm -rf ${iotc_src_subdir}/$m
+		#rm -rf ${iotc__src_subdir}/$m
 		eval "iotc__repo_url=\$iotc_repo_${m}"
 		eval "iotc__repo_rev=\$iotc_repo_${m}_REV"
 		echo "Checking out $m: ${iotc__repo_url}@${iotc__repo_rev}"
@@ -73,12 +74,13 @@ if [ "$iotc_modules" != "" ]; then
 	done
 
 	echo "Building and installing iotcrafter modules"
-	iotc__MAKE_OPTS="-C ${iotc__kernel_dir} ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- INSTALL_MOD_PATH=${temp_dir}"
+	iotc__MAKE_OPTS="-C ${iotc__kernel_dir} ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- INSTALL_MOD_PATH=${tempdir}"
 	for m in $iotc_modules; do
 		( cd ${iotc__src_subdir}/$m; \
 			make $iotc__MAKE_OPTS M=$PWD clean; \
 			make -j8 $iotc__MAKE_OPTS M=$PWD modules && \
 				make -j8 $iotc__MAKE_OPTS M=$PWD modules_install )
+		depmod -b ${tempdir} -A ${repo_rcnee_pkg_version}
 	done
 
 # "$iotc_modules" != ""
