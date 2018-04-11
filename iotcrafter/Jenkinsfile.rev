@@ -1,10 +1,10 @@
 #!/usr/bin/env groovy
 
-def initialGitRevision = '260d0ea' // first iotcrafter commit after fork from tag v2017.05
+def initialGitRevision = '7e36801' // config for 4.9 starts since this revision
 def workerJob = 'oprog-img-bbb-build'
 
-def configList = ['iotcrafter-debian-jessie-v4.4': 'v4.4' ]
-def oldRelease = ['iotcrafter-debian-jessie-v4.4': true ]
+def configList = ['iotcrafter-debian-jessie-v4.4': 'v4.4', 'iotcrafter-debian-stretch-v4.9': 'v4.9' ]
+def oldRelease = ['iotcrafter-debian-jessie-v4.4': false, 'iotcrafter-debian-stretch-v4.9': true ]
 def branchId = 'stable'
 
 properties([disableConcurrentBuilds(),
