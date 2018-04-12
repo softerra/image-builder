@@ -85,7 +85,7 @@ EOF
 		dir('image-builder/deploy/') {
 			sh """#!/bin/bash
 				CUR_DATE=\$(date +%Y-%m-%d)
-				TAG_DIR="${deploy['base']}/${params.branchId}/${params.configId}/\${CUR_DATE}"
+				TAG_DIR="${deploy['base']}/${params.branchId}/\${CUR_DATE}"
 				mkdir -p \${TAG_DIR}
 
 				. image-builder.project
