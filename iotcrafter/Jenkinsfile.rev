@@ -22,6 +22,14 @@ properties([disableConcurrentBuilds(),
 			pipelineTriggers([pollSCM('H 01 * * *')])
 		])
 
+def saveLastReleaseRevision(rev) {
+	// save last release revision
+	println("Saving last release revision ${rev} to ${env.JENKINS_HOME}/userContent/${env.JOB_BASE_NAME}-last-release")
+	sh """
+		echo -n "${rev}" > ${env.JENKINS_HOME}/userContent/${env.JOB_BASE_NAME}-last-release
+	"""
+}
+
 node {
 	stage('Cleanup') {
 		deleteDir()
@@ -56,17 +64,20 @@ node {
 					]
 		scmVars = checkout(scmDesc)
 
+		// override last revision in the persistent storage as requested
+		if (params.initialReleaseRevision != '') {
+			println("Override revision of last successfully built release: ${params.initialReleaseRevision}")
+			saveLastReleaseRevision(params.initialReleaseRevision)
+		}
+
 		// read last release revision from persistent storage
 		sh """
 			cp -f ${env.JENKINS_HOME}/userContent/${env.JOB_BASE_NAME}-last-release ${env.WORKSPACE}/ || \
 				echo -n > ${env.WORKSPACE}/${env.JOB_BASE_NAME}-last-release
 		"""
 		def lastReleaseRev = readFile("${env.JOB_BASE_NAME}-last-release").trim()
+
 		def startReleaseRev = lastReleaseRev ?: initialGitRevision
-		if (params.initialReleaseRevision != '') {
-			println("Override start revision to look for releases from: ${params.initialReleaseRevision} instead of ${startReleaseRev}")
-			startReleaseRev = params.initialReleaseRevision
-		}
 		newCommits = scmVars.GIT_COMMIT != scmVars.GIT_PREVIOUS_COMMIT
 
 		//debug
@@ -167,9 +178,7 @@ node {
 		}
 
 		// save last release revision
-		sh """
-			echo -n "${releaseCommit}" > ${env.JENKINS_HOME}/userContent/${env.JOB_BASE_NAME}-last-release
-		"""
+		saveLastReleaseRevision(releaseCommit)
 	}
 
 	if (newCommits && !headIsRelease) {
