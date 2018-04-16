@@ -464,3 +464,8 @@ sed -i 's/^\(iotc_init_version=\).*$/\1"'${IOTC_INIT_REV}'"/' /opt/iotc/bin/iotc
 chmod 755 /opt/iotc/bin/iotc_init.sh
 # force for now to use ifup for wifi (nevermind what is specified by the scirpt)
 sed -i 's/^\(IOTC_WLAN_FORCE_IFUP=\).*$/\11/' /opt/iotc/bin/iotc_init.sh
+
+# restore capemgr service
+if [ -f /lib/systemd/system/capemgr.service ] ; then
+	systemctl enable capemgr.service || true
+fi

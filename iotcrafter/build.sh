@@ -15,6 +15,13 @@ if [ -z "${IMG_NAME}" ]; then
     exit 1
 fi
 
+# Setup chroot hooks
+
+cat > "${DIR}/chroot_before_hook" <<-__EOF__
+. ${DIR}/iotcrafter/restore_capemgr_service.sh
+rm -f ${DIR}/chroot_before_hook
+__EOF__
+
 cat > "${DIR}/chroot_after_hook" <<-__EOF__
 . ${DIR}/iotcrafter/setup_kernel_modules.sh
 rm -f ${DIR}/chroot_after_hook
@@ -115,8 +122,9 @@ cat > ${DIR}/deploy/setup_sdcard_populate_after_hook <<-__EOF__
     echo "setup_sdcard_populate_after_hook: func stack: \${FUNCNAME[*]}"
     case "\${FUNCNAME[1]}" in
         populate_rootfs)
-            sed -i 's/^cmdline=.*\$/& init=\/opt\/iotc\/bin\/iotc_init.sh/' \${TEMPDIR}/disk/boot/uEnv.txt
-            sed -i 's/^dtb=/#dtb=/' \${TEMPDIR}/disk/boot/uEnv.txt
+            sed -i 's/^cmdline=.*\$/& init=\/opt\/iotc\/bin\/iotc_init.sh/
+                    s/^dtb=/#dtb=/
+                    s/^#*enable_uboot_overlays=[0-1]/enable_uboot_overlays=0/' \${TEMPDIR}/disk/boot/uEnv.txt
             echo "/boot/uEnv.txt: init script defined, no override for default DTB ensured"
 
             sed -i '/^loadall=/ifixfdt=echo IoTC: check \${fdtbase}..; if test \${fdtbase} = am335x-boneblack; then setenv fdtbase am335x-boneblack-emmc-overlay; setenv fdtfile am335x-boneblack-emmc-overlay.dtb; fi; if test \${fdtbase} = am335x-boneblack-wireless; then setenv fdtbase am335x-boneblack-wireless-emmc-overlay; setenv fdtfile am335x-boneblack-wireless-emmc-overlay.dtb; fi;' \${TEMPDIR}/disk/uEnv.txt
