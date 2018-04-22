@@ -31,6 +31,7 @@ A /configs/								- iotcrafter config
 A /iotcrafter/							- Docker, Jenkins and iotcrafter build scripts
 A /scripts/igcw.sh						- Iotcrafter git clone workaround (patch chroot.sh, redirect git clone from QEMU to HOST environment)
 A /target/chroot/iotcrafter_jessie.sh	- iotcrafter chroot installation script for jessie
+A /target/chroot/iotcrafter_stretch.sh	- iotcrafter chroot installation script for stretch
 
 Build flow (iotcrafter specific build steps are marked [IOTC])
 --------------------------------------------------------------
@@ -39,8 +40,13 @@ build-docker-iotcrafter.sh
 	- run build sequence in a docker container
 		- reconfiguration of qemu package
 		- build.sh
-			- prepare chroot_after_hook:
-				- [IOTC] will copy our overlays *.dtbo to rootfs
+			- prepare chroot_after_hook = setup_kernel_modules.sh:
+				- [IOTC] download and unpack linux-headers-<ver> package into iotc work dir
+				- [IOTC] will copy our overlay sources *.dts to iotc work dir
+				- [IOTC] build overlays and install to rootfs
+				- [IOTC] build additional kernel modules and install to rootfs
+			- prepare chhrot_before_hook (stretch and  buster)
+				- [IOTC] restore capemanager service
 
 			- patch image-builder scripts for git clone workaround
 			- call RootStock-NG.sh with iotcrafter config
@@ -60,13 +66,14 @@ build-docker-iotcrafter.sh
 					- call ${early_chroot_script}
 					- call CHROOT chroot_script.sh
 					- call ${chroot_before_hook}
-					- [IOTC] call ${chroot_script} --> target/chroot/iotcrafter_jessie.sh
+					- [IOTC] call ${chroot_script} --> target/chroot/iotcrafter_stretch.sh (v4.9, or _jessie.sh for v4.4)
 						- [IOTC] npm config set unsafe-perm true
 						- [IOTC] npm install bower -g
-						- [IOTC] install iotc-core (pass params BBB, kernel version)
+						- [IOTC] configure IOTC deb repo and key
+						- [IOTC] install iotc-core (pass params BBB, kernel version), iotc-ide
 						- [IOTC] reconf unattended-upgrades
-						- [IOTC] install iotc-ide
 						- [IOTC] donwload iotc_init.sh, configure it and install
+						- [IOTC] _stretch.sh: enable capmgr service
 
 					- call ${chroot_after_hook}
 						- [IOTC] copy our overlays *.dtbo to rootfs
@@ -88,7 +95,10 @@ build-docker-iotcrafter.sh
 					- populate boot
 					- populate rootfs
 						- [IOTC] call the hook
-							- edit /boot/uEnv.txt: insert init=..iotc_init.sh, disable possible overrides of default DTB
+							- edit /boot/uEnv.txt:
+										insert init=..iotc_init.sh,
+										disable possible overrides of default DTB
+										diablepossibleuse of u-boot overlays
 							- edit /uEnv.txt: insert code substituting default DTB
 
 		- get RC of the build and handle it to postbuild.sh script
@@ -120,24 +130,43 @@ YYYY-MM-DD-bone-g<abbrev>-debdist-iotcrafter.img				- general name
 * -iotcrafter - suffix
 
 Jenkins build is organized by two jobs:
-	Jenkinsfile.rev -
-		master josb which determines revision/revisions to be built and
-		runs the slave job for every one revision picked out
-		- list tags 'YYYY-MM-DD-*' since the last release =>  list of 'release' revisions to build
-		- determine whether HEAD is 'release'(tagged appropriately), if not - 'current' revision to build
-		- determine name of HEAD revision as
-			- <YYYY-MM-DD-*tag.bone>					by 'git describe --tags' (assume tags are YYYY-MM-DD-*)
-			- <YYYY-MM-DD-*tag.bone>-N-g<commit>		by 'git describe --tags'
-			- YYYY-MM-DD-rc.<comment>.bone-g<commit>	by git log if comment looks like RC: <comment> ...
-			- YYYY-MM-DD-bone-g<commit>					by git log if comment is other
-	Jenkinsfile.build -
+	Jenkinsfile.rev
+	===============
+		master job which determines
+			- the latest 'release' revision (tagged specifically)
+			- current revision (if repo was changed and the HEAD is not 'release')
+		run the slave job:
+			- for every defined config - for 'release' revision
+			- for every defined config - for 'current' revision
+
+		Build identification:
+		--------------------
+		- determine 'release' revision to build:
+			- list tags 'YYYY-MM-DD-*' since the last release (or pre-defined last release),
+			pick out the latest one =>
+				- build 'release'
+				- build-name is the tag
+		- determine whether HEAD is the 'release', if not =>
+				- build 'current'
+				- build-name is
+					- <YYYY-MM-DD-*tag.bone>					by 'git describe --tags' (assume tags are YYYY-MM-DD-*)
+					- <YYYY-MM-DD-*tag.bone>-N-g<commit>		by 'git describe --tags'
+					- YYYY-MM-DD-rc.<comment>.bone-g<commit>	by git log if comment looks like RC: <comment> ...
+					- YYYY-MM-DD-bone-g<commit>					by git log if comment is other
+	Jenkinsfile.build
+	=================
 		slave/worker job which actually performs the build of a revision
 			- gets params from master job (repo, revision to build etc)
+			- forms 'config' file with params to be passed to build scripts
 			- runs iotcrafter/build-docker-iotcrafter.sh
 			- copies result images to pre-defined dirs:
-				- 'release' => deploy[base]/CURDATE/YYYY-MM-DD-XX...XX-iotcrafter.zip
-							=> deploy[base]/CURDATE/bbb.img.zip (for old installer)
-				- 'current' => deploy[base]/current/CURDATE/YYYY-MM-DD-XX...XX-iotcrafter.zip
+				- 'release' => deploy[base]/<branch-ID>/CURDATE/YYYY-MM-DD-XX...XX-iotcrafter.zip
+							=> deploy[old_base]/CURDATE/bbb.img.zip (for old installer)
+			Image file name:
+			----------------
+			<build-name>-<config-id>-<deb-codename>-iotcrafter.img
+				config-id - from Jenkins.rev: e.g. v4.4, v4.9
+			example: 2017-11-24-v2017.09.1.bone-22-gdb8b7a1-v4.9-stretch-iotcrafter.zip
 
 Jenkins setup:
 * Create a pipeline for Jenkinsfile.rev
