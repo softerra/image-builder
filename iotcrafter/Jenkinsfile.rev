@@ -1,13 +1,13 @@
 #!/usr/bin/env groovy
 
-def initialGitRevision = '7e36801' // config for 4.9 starts since this revision
+def initialGitRevision = '1c213a8' // this branch starts since this revision
 def workerJob = 'oprog-img-bbb-build'
 
 def configList = [
 		'iotcrafter-debian-stretch-v4.9': [
-				'id': 'v4.9', 'branchId': 'stable', 'oldRelease': true ],
-		'iotcrafter-debian-jessie-v4.4': [
-				'id': 'v4.4', 'branchId': 'jessie', 'oldRelease': false ]
+				'id': 'v4.9', 'branchId': 'next', 'oldRelease': false ],
+		'iotcrafter-debian-stretch-v4.14': [
+				'id': 'v4.14', 'branchId': 'next', 'oldRelease': false ]
 	]
 
 properties([disableConcurrentBuilds(),
@@ -22,7 +22,7 @@ properties([disableConcurrentBuilds(),
 						description: 'if specified, overrides the commit which used as a start for looking for releases',
 						name: 'initialReleaseRevision')
 			]),
-			pipelineTriggers([pollSCM('H 01 * * *')])
+			pipelineTriggers([pollSCM('H 04 * * *')])
 		])
 
 def saveLastReleaseRevision(rev) {
