@@ -3,9 +3,12 @@
 def initialGitRevision = '7e36801' // config for 4.9 starts since this revision
 def workerJob = 'oprog-img-bbb-build'
 
-def configList = ['iotcrafter-debian-jessie-v4.4': 'v4.4', 'iotcrafter-debian-stretch-v4.9': 'v4.9' ]
-def oldRelease = ['iotcrafter-debian-jessie-v4.4': false, 'iotcrafter-debian-stretch-v4.9': true ]
-def branchId = 'stable'
+def configList = [
+		'iotcrafter-debian-stretch-v4.9': [
+				'id': 'v4.9', 'branchId': 'stable', 'oldRelease': true ],
+		'iotcrafter-debian-jessie-v4.4': [
+				'id': 'v4.4', 'branchId': 'jessie', 'oldRelease': false ]
+	]
 
 properties([disableConcurrentBuilds(),
 			buildDiscarder(
@@ -152,9 +155,9 @@ node {
 		releaseCommit = release[0..6]
 		releaseInfo = release[8..-1]
 
-		configList.each { buildConfig, configId ->
+		configList.each { buildConfig, configProps ->
 
-			stage("Release-${configId}") {
+			stage("Release-${configProps.id}") {
 				println("Building: ${release}, ${buildConfig}")
 
 				build([job: workerJob,
@@ -164,12 +167,12 @@ node {
 						[$class: 'StringParameterValue', name: 'buildInfo', value: releaseInfo ],
 
 						// duplicate in old repo for old installer
-						[$class: 'BooleanParameterValue', name: 'isOldRelease', value: oldRelease[buildConfig] ],
+						[$class: 'BooleanParameterValue', name: 'isOldRelease', value: configProps.oldRelease ],
 
 						[$class: 'StringParameterValue', name: 'buildConfig', value: buildConfig ],
 
-						[$class: 'StringParameterValue', name: 'branchId', value: branchId ],
-						[$class: 'StringParameterValue', name: 'configId', value: configId ]
+						[$class: 'StringParameterValue', name: 'branchId', value: configProps.branchId ],
+						[$class: 'StringParameterValue', name: 'configId', value: configProps.id ]
 					]
 				])
 			}
@@ -183,9 +186,9 @@ node {
 
 	if (newCommits && !headIsRelease) {
 
-		configList.each { buildConfig, configId ->
+		configList.each { buildConfig, configProps ->
 
-			stage("Current-${configId}") {
+			stage("Current-${configProps.id}") {
 				println("Building: ${headInfo}, ${buildConfig}")
 
 				build([job: workerJob,
@@ -198,8 +201,8 @@ node {
 
 						[$class: 'StringParameterValue', name: 'buildConfig', value: buildConfig ],
 
-						[$class: 'StringParameterValue', name: 'branchId', value: branchId ],
-						[$class: 'StringParameterValue', name: 'configId', value: configId ]
+						[$class: 'StringParameterValue', name: 'branchId', value: configProps.branchId ],
+						[$class: 'StringParameterValue', name: 'configId', value: configProps.id ]
 					]
 				])
 			}
