@@ -5,9 +5,9 @@ def workerJob = 'oprog-img-bbb-build'
 
 def configList = [
 		'iotcrafter-debian-stretch-v4.9': [
-				'id': 'v4.9', 'branchId': 'next', 'oldRelease': false ],
+				'id': 'v4.9', 'branchId': 'dev', 'oldRelease': false ],
 		'iotcrafter-debian-stretch-v4.14': [
-				'id': 'v4.14', 'branchId': 'next', 'oldRelease': false ]
+				'id': 'v4.14', 'branchId': 'dev', 'oldRelease': false ]
 	]
 
 properties([disableConcurrentBuilds(),
