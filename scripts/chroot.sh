@@ -26,7 +26,10 @@ time=$(date +%Y-%m-%d)
 OIB_DIR="$(dirname "$( cd "$(dirname "$0")" ; pwd -P )" )"
 chroot_completed="false"
 
-abi=aa
+abi=ab
+
+#ab=efi added 20180321
+#aa
 
 . "${DIR}/.project"
 
@@ -1006,6 +1009,33 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		fi
 	}
 
+	grub_tweaks () {
+		echo "Log: (chroot): grub_tweaks"
+
+		echo "#rcn-ee: grub: set our standard boot args" >> /etc/default/grub
+		echo "GRUB_CMDLINE_LINUX_DEFAULT=\"console=ttyO0,115200n8 rootwait coherent_pool=1M net.ifnames=0 quiet\"" >> /etc/default/grub
+		echo "#rcn-ee: grub: disable LINUX_UUID, broken" >> /etc/default/grub
+		echo "GRUB_DISABLE_LINUX_UUID=true" >> /etc/default/grub
+		echo "#rcn-ee: grub: disable OS_PROBER, repeated OS entries" >> /etc/default/grub
+		echo "GRUB_DISABLE_OS_PROBER=true" >> /etc/default/grub
+
+		mkdir -p /boot/efi/EFI/BOOT/
+
+		###FIXME: let the boot script take care of this... (for now)
+		touch /boot/efi/EFI/efi.gen
+
+		###FIXME... still needs work...
+
+		#    fat iso9660 part_gpt part_msdos normal boot linux configfile loopback chain efifwsetup efi_gop \
+		#    efi_uga ls search search_label search_fs_uuid search_fs_file gfxterm gfxterm_background \
+		#    gfxterm_menu test all_video loadenv exfat ext2 ntfs btrfs hfsplus udf
+
+		#echo "Log: (chroot): grub-mkimage -d /usr/lib/grub/arm-efi -o /boot/efi/EFI/BOOT/bootarm.efi -p /efi/boot -O arm-efi fat iso9660 part_gpt part_msdos normal boot linux configfile"
+
+		#grub-mkimage -d /usr/lib/grub/arm-efi -o /boot/efi/EFI/BOOT/bootarm.efi -p /efi/boot -O arm-efi fat iso9660 part_gpt part_msdos normal boot linux configfile
+
+	}
+
 	#cat /chroot_script.sh
 	is_this_qemu
 	stop_init
@@ -1045,6 +1075,10 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 	if [ -f /lib/systemd/systemd ] ; then
 		systemd_tweaks
+	fi
+
+	if [ -f /etc/default/grub ] ; then
+		grub_tweaks
 	fi
 
 	rm -f /chroot_script.sh || true

@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2018 Robert Nelson <robertcnelson@gmail.com>
 # Copyright (c) 2010 Mario Di Francesco <mdf-code@digitalexile.it>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -334,6 +334,12 @@ generate_soc () {
 	echo "conf_boot_endmb=${conf_boot_endmb}" >> ${wfile}
 	echo "sfdisk_fstype=${sfdisk_fstype}" >> ${wfile}
 	echo "" >> ${wfile}
+
+	if [ "x${uboot_efi_mode}" = "xenable" ] ; then
+		echo "uboot_efi_mode=${uboot_efi_mode}" >> ${wfile}
+		echo "" >> ${wfile}
+	fi
+
 	echo "boot_label=${BOOT_LABEL}" >> ${wfile}
 	echo "rootfs_label=${ROOTFS_LABEL}" >> ${wfile}
 	echo "" >> ${wfile}
@@ -341,6 +347,9 @@ generate_soc () {
 	echo "dtb=${dtb}" >> ${wfile}
 	echo "serial_tty=${SERIAL}" >> ${wfile}
 	echo "usbnet_mem=${usbnet_mem}" >> ${wfile}
+	echo "" >> ${wfile}
+	echo "#Advanced options" >> ${wfile}
+	echo "#disable_ssh_regeneration=true" >> ${wfile}
 
 	echo "" >> ${wfile}
 }
@@ -595,6 +604,8 @@ format_boot_partition () {
 	fi
 
 	format_partition
+
+	boot_drive="${conf_root_device}p${media_boot_partition}"
 }
 
 format_rootfs_partition () {
@@ -647,6 +658,16 @@ create_partitions () {
 	case "${bootloader_location}" in
 	fatfs_boot)
 		conf_boot_endmb=${conf_boot_endmb:-"12"}
+
+		#mkfs.fat 4.1 (2017-01-24)
+		#WARNING: Not enough clusters for a 16 bit FAT! The filesystem will be
+		#misinterpreted as having a 12 bit FAT without mount option "fat=16".
+		#mkfs.vfat: Attempting to create a too large filesystem
+		#LC_ALL=C mkfs.vfat -F 16 /dev/sdg1 -n BOOT
+		#Failure: formating partition
+
+		#When using "E" this fails, however "0xE" works fine...
+
 		echo "Using sfdisk to create partition layout"
 		echo "Version: `LC_ALL=C sfdisk --version`"
 		echo "-----------------------------"
@@ -656,6 +677,9 @@ create_partitions () {
 		echo "Using dd to place bootloader on drive"
 		echo "-----------------------------"
 		if [ "x${bootrom_gpt}" = "xenable" ] ; then
+			sfdisk_gpt="--label gpt"
+		fi
+		if [ "x${uboot_efi_mode}" = "xenable" ] ; then
 			sfdisk_gpt="--label gpt"
 		fi
 		dd_uboot_boot
@@ -669,6 +693,9 @@ create_partitions () {
 		if [ "x${bootrom_gpt}" = "xenable" ] ; then
 			sfdisk_gpt="--label gpt"
 		fi
+		if [ "x${uboot_efi_mode}" = "xenable" ] ; then
+			sfdisk_gpt="--label gpt"
+		fi
 		dd_spl_uboot_boot
 		dd_uboot_boot
 		bootloader_installed=1
@@ -678,8 +705,16 @@ create_partitions () {
 			sfdisk_fstype=${sfdisk_fstype:-"0xE"}
 			sfdisk_partition_layout
 		else
-			sfdisk_single_partition_layout
-			media_rootfs_partition=1
+			if [ "x${uboot_efi_mode}" = "xenable" ] ; then
+				conf_boot_endmb="16"
+				conf_boot_fstype="fat"
+				sfdisk_fstype="U"
+				BOOT_LABEL="EFI"
+				sfdisk_partition_layout
+			else
+				sfdisk_single_partition_layout
+				media_rootfs_partition=1
+			fi
 		fi
 		;;
 	*)
@@ -1084,7 +1119,31 @@ populate_rootfs () {
 				exit
 			fi
 		fi
+	fi
 
+	if [ "x${uboot_efi_mode}" = "xenable" ] ; then
+
+		if [ ! -d ${TEMPDIR}/disk/boot/efi ] ; then
+			mkdir -p ${TEMPDIR}/disk/boot/efi
+		fi
+
+		if ! mount -t vfat ${media_prefix}${media_boot_partition} ${TEMPDIR}/disk/boot/efi; then
+
+			echo "-----------------------------"
+			echo "BUG: [${media_prefix}${media_boot_partition}] was not available so trying to mount again in 5 seconds..."
+			partprobe ${media}
+			sync
+			sleep 5
+			echo "-----------------------------"
+
+			if ! mount -t vfat ${media_prefix}${media_boot_partition} ${TEMPDIR}/disk/boot/efi; then
+				echo "-----------------------------"
+				echo "Unable to mount ${media_prefix}${media_boot_partition} at ${TEMPDIR}/disk/boot/efi to complete populating rootfs Partition"
+				echo "Please retry running the script, sometimes rebooting your system helps."
+				echo "-----------------------------"
+				exit
+			fi
+		fi
 	fi
 
 	lsblk | grep -v sr0
@@ -1258,27 +1317,44 @@ populate_rootfs () {
 			if [ "x${uboot_pru_rproc_44ti}" = "xenable" ] ; then
 				echo "###pru_rproc (4.4.x-ti kernel)" >> ${wfile}
 				echo "uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo" >> ${wfile}
-				#echo "###pru_rproc (4.9.x-ti kernel)" >> ${wfile}
-				#echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-9-TI-00A0.dtbo" >> ${wfile}
-				echo "###pru_uio (4.4.x-ti, 4.14.x-ti & mainline/bone kernel)" >> ${wfile}
+				echo "###pru_rproc (4.9.x-ti kernel)" >> ${wfile}
+				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-9-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_rproc (4.14.x-ti kernel)" >> ${wfile}
+				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-14-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_uio (4.4.x-ti, 4.9.x-ti, 4.14.x-ti & mainline/bone kernel)" >> ${wfile}
 				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo" >> ${wfile}
 				use_pru_uio="blocked"
 			fi
 			if [ "x${uboot_pru_rproc_49ti}" = "xenable" ] ; then
 				echo "###pru_rproc (4.4.x-ti kernel)" >> ${wfile}
 				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo" >> ${wfile}
-				#echo "###pru_rproc (4.9.x-ti kernel)" >> ${wfile}
-				#echo "uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-9-TI-00A0.dtbo" >> ${wfile}
-				echo "###pru_uio (4.4.x-ti, 4.14.x-ti & mainline/bone kernel)" >> ${wfile}
+				echo "###pru_rproc (4.9.x-ti kernel)" >> ${wfile}
+				echo "uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-9-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_rproc (4.14.x-ti kernel)" >> ${wfile}
+				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-14-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_uio (4.4.x-ti, 4.9.x-ti, 4.14.x-ti & mainline/bone kernel)" >> ${wfile}
+				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo" >> ${wfile}
+				use_pru_uio="blocked"
+			fi
+			if [ "x${uboot_pru_rproc_414ti}" = "xenable" ] ; then
+				echo "###pru_rproc (4.4.x-ti kernel)" >> ${wfile}
+				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_rproc (4.9.x-ti kernel)" >> ${wfile}
+				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-9-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_rproc (4.14.x-ti kernel)" >> ${wfile}
+				echo "uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-14-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_uio (4.4.x-ti, 4.9.x-ti, 4.14.x-ti & mainline/bone kernel)" >> ${wfile}
 				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo" >> ${wfile}
 				use_pru_uio="blocked"
 			fi
 			if [ "x${use_pru_uio}" = "x" ] ; then
 				echo "###pru_rproc (4.4.x-ti kernel)" >> ${wfile}
 				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo" >> ${wfile}
-				#echo "###pru_rproc (4.9.x-ti kernel)" >> ${wfile}
-				#echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-9-TI-00A0.dtbo" >> ${wfile}
-				echo "###pru_uio (4.4.x-ti, 4.14.x-ti & mainline/bone kernel)" >> ${wfile}
+				echo "###pru_rproc (4.9.x-ti kernel)" >> ${wfile}
+				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-9-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_rproc (4.14.x-ti kernel)" >> ${wfile}
+				echo "#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-14-TI-00A0.dtbo" >> ${wfile}
+				echo "###pru_uio (4.4.x-ti, 4.9.x-ti, 4.14.x-ti & mainline/bone kernel)" >> ${wfile}
 				echo "uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo" >> ${wfile}
 			fi
 			echo "###" >> ${wfile}
@@ -1442,6 +1518,10 @@ populate_rootfs () {
 			else
 				echo "${rootfs_drive}  /  ${ROOTFS_TYPE}  noatime,errors=remount-ro  0  1" >> ${wfile}
 			fi
+		fi
+
+		if [ "x${uboot_efi_mode}" = "xenable" ] ; then
+			echo "${boot_drive}  /boot/efi vfat defaults 0 0" >> ${wfile}
 		fi
 
 		echo "debugfs  /sys/kernel/debug  debugfs  defaults  0  0" >> ${wfile}
@@ -1643,6 +1723,10 @@ populate_rootfs () {
 		umount ${TEMPDIR}/disk/var || true
 	fi
 
+	if [ "x${uboot_efi_mode}" = "xenable" ] ; then
+		umount ${TEMPDIR}/disk/boot/efi || true
+	fi
+
 	umount ${TEMPDIR}/disk || true
 	if [ "x${build_img_file}" = "xenable" ] ; then
 		sync
@@ -1673,16 +1757,16 @@ populate_rootfs () {
 
 			case "${conf_boot_fstype}" in
 			fat)
-				echo "conf_partition1_fstype=0xE" >> ${wfile}
+				echo "conf_partition1_fstype=E" >> ${wfile}
 				;;
 			ext2|ext3|ext4|btrfs)
-				echo "conf_partition1_fstype=0x83" >> ${wfile}
+				echo "conf_partition1_fstype=L" >> ${wfile}
 				;;
 			esac
 
 			if [ "x${media_rootfs_partition}" = "x2" ] ; then
 				echo "conf_partition1_endmb=${conf_boot_endmb}" >> ${wfile}
-				echo "conf_partition2_fstype=0x83" >> ${wfile}
+				echo "conf_partition2_fstype=L" >> ${wfile}
 			fi
 			echo "conf_root_partition=${media_rootfs_partition}" >> ${wfile}
 		fi
@@ -1998,6 +2082,12 @@ while [ ! -z "$1" ] ; do
 		;;
 	--enable-uboot-pru-rproc-49ti)
 		uboot_pru_rproc_49ti="enable"
+		;;
+	--enable-uboot-pru-rproc-414ti)
+		uboot_pru_rproc_414ti="enable"
+		;;
+	--efi)
+		uboot_efi_mode="enable"
 		;;
 	--offline)
 		offline=1

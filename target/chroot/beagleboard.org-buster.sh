@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2014-2017 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2014-2018 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
 
 export LC_ALL=C
 
-u_boot_release="v2018.01"
+u_boot_release="v2018.03"
 u_boot_release_x15="ti-2017.01"
 
 #contains: rfs_username, release_date
@@ -303,22 +303,26 @@ install_git_repos () {
 		fi
 	fi
 
+	git_repo="https://github.com/mvduin/py-uio"
+	git_target_dir="/opt/source/py-uio"
+	git_clone
+
 	#beagle-tester
 	git_repo="https://github.com/jadonk/beagle-tester"
 	git_target_dir="/opt/source/beagle-tester"
 	git_clone
-	if [ -f ${git_target_dir}/.git/config ] ; then
-		if [ -f /usr/lib/libroboticscape.so ] ; then
-			cd ${git_target_dir}/
-			if [ -f /usr/bin/make ] ; then
-				make
-				make install || true
-#				if [ ! "x${image_type}" = "xtester-2gb" ] ; then
-#					systemctl disable beagle-tester.service || true
-#				fi
-			fi
-		fi
-	fi
+#	if [ -f ${git_target_dir}/.git/config ] ; then
+#		if [ -f /usr/lib/libroboticscape.so ] ; then
+#			cd ${git_target_dir}/
+#			if [ -f /usr/bin/make ] ; then
+#				make
+#				make install || true
+##				if [ ! "x${image_type}" = "xtester-2gb" ] ; then
+##					systemctl disable beagle-tester.service || true
+##				fi
+#			fi
+#		fi
+#	fi
 }
 
 other_source_links () {

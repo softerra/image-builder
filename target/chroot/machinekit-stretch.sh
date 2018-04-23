@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2014-2017 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2014-2018 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
 
 export LC_ALL=C
 
-u_boot_release="v2018.01"
+u_boot_release="v2018.03"
 u_boot_release_x15="ti-2017.01"
 
 #contains: rfs_username, release_date
@@ -330,6 +330,10 @@ install_git_repos () {
 
 	git_repo="https://github.com/StrawsonDesign/Robotics_Cape_Installer"
 	git_target_dir="/opt/source/Robotics_Cape_Installer"
+	git_clone
+
+	git_repo="https://github.com/mvduin/py-uio"
+	git_target_dir="/opt/source/py-uio"
 	git_clone
 
 	#beagle-tester
