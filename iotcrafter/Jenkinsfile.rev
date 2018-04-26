@@ -1,8 +1,6 @@
 #!/usr/bin/env groovy
 
-def initialGitRevision = '1c213a8' // this branch starts since this revision
 def workerJob = 'oprog-img-bbb-build'
-
 def configList = [
 		'iotcrafter-debian-stretch-v4.9': [
 				'id': 'v4.9', 'branchId': 'dev', 'oldRelease': false ],
@@ -15,25 +13,17 @@ properties([disableConcurrentBuilds(),
 				logRotator(artifactDaysToKeepStr: '',
 							artifactNumToKeepStr: '',
 							daysToKeepStr: '',
-							numToKeepStr: '3')),
+							numToKeepStr: '5')),
 			parameters([
-				booleanParam(defaultValue: false, description: 'force rebuild HEAD revision', name: 'rebuildCurrent'),
-				string(defaultValue: '',
-						description: 'if specified, overrides the commit which used as a start for looking for releases',
-						name: 'initialReleaseRevision')
+				string(defaultValue: '', description: 'force building the specified revision, use HEAD by default', name: 'buildCommit')
 			]),
 			pipelineTriggers([pollSCM('H 04 * * *')])
 		])
 
-def saveLastReleaseRevision(rev) {
-	// save last release revision
-	println("Saving last release revision ${rev} to ${env.JENKINS_HOME}/userContent/${env.JOB_BASE_NAME}-last-release")
-	sh """
-		echo -n "${rev}" > ${env.JENKINS_HOME}/userContent/${env.JOB_BASE_NAME}-last-release
-	"""
-}
-
 node {
+	//debug
+	println("Params: ${params}")
+
 	stage('Cleanup') {
 		deleteDir()
 	}
@@ -42,10 +32,8 @@ node {
 	def bsBranch = ''
 	def scmVars = []
 
-	def releaseList = []
 	def headInfo = ''
-	def headIsRelease = false
-	def newCommits = false
+	def buildCommit = ''
 
 	stage('Sources') {
 		// use the same repo URL and branch as ones of this Jenkinsfile script
@@ -67,61 +55,23 @@ node {
 					]
 		scmVars = checkout(scmDesc)
 
-		// override last revision in the persistent storage as requested
-		if (params.initialReleaseRevision != '') {
-			println("Override revision of last successfully built release: ${params.initialReleaseRevision}")
-			saveLastReleaseRevision(params.initialReleaseRevision)
+		if (params.buildCommit != '') {
+			buildCommit = params.buildCommit
+			dir('image-builder') {
+				sh """
+					git checkout ${buildCommit}
+				"""
+			}
+		} else {
+			buildCommit = scmVars.GIT_COMMIT
 		}
-
-		// read last release revision from persistent storage
-		sh """
-			cp -f ${env.JENKINS_HOME}/userContent/${env.JOB_BASE_NAME}-last-release ${env.WORKSPACE}/ || \
-				echo -n > ${env.WORKSPACE}/${env.JOB_BASE_NAME}-last-release
-		"""
-		def lastReleaseRev = readFile("${env.JOB_BASE_NAME}-last-release").trim()
-
-		def startReleaseRev = lastReleaseRev ?: initialGitRevision
-		newCommits = scmVars.GIT_COMMIT != scmVars.GIT_PREVIOUS_COMMIT
 
 		//debug
-		println("lastReleaseRev: ${lastReleaseRev}")
-		println("prevCommit: ${scmVars.GIT_PREVIOUS_COMMIT}")
 		println("curCommit: ${scmVars.GIT_COMMIT}")
-		println("startReleaseRev: ${startReleaseRev}")
-		println("newCommits: ${newCommits}")
-
-		if (params.rebuildCurrent) {
-			newCommits = true	// if HEAD is not release then build as 'Current'
-			if (startReleaseRev == scmVars.GIT_COMMIT[0..6]) {
-				// use as start revision the revision before it, so this release will be selected
-				// TODO: may it select the start revision if it is also 'release'??
-				startReleaseRev += '^'
-			}
-			println("Forced to rebuild HEAD revision")
-			println("startReleaseRev: ${startReleaseRev}")
-			println("newCommits: ${newCommits}")
-		}
+		println("buildCommit: ${buildCommit}")
 
 		dir('image-builder') {
 			sh """
-				# release tag starts with 'YYYY-MM-DD-'
-				# NOTE: restrict tag list by the latest one (build the latest only)
-				git tag -l --contains ${startReleaseRev} --merged | \
-					sed -n '/[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}-/ p' | tail -n1 > \
-						${env.WORKSPACE}/tag-list
-
-				echo -n > ${env.WORKSPACE}/release-list
-				cat ${env.WORKSPACE}/tag-list | while read tag; do \
-					abbrev=\$(git rev-parse --short \$tag); \
-					if [ "\$abbrev" != "${startReleaseRev}" ]; then \
-						echo "\${abbrev} \${tag}" >> ${env.WORKSPACE}/release-list; \
-					fi \
-				done
-
-				git tag -l --contains HEAD --merged | \
-					sed -n '/[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}-/ p' | wc -l > \
-						${env.WORKSPACE}/head-is-release
-
 				# current head info (special for ones commented as 'RC: alphanumeric')
 				git describe --tags --first-parent | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}-' > ${env.WORKSPACE}/head-info || \
 					git log -1 --date=format:'%F' --format='%h %ad %s' | \
@@ -134,84 +84,32 @@ node {
 			"""
 		}
 
-		releaseList = readFile('release-list').split("\n").collect().reverse()
 		headInfo = readFile('head-info').trim()
-		headIsRelease = readFile('head-is-release').toInteger() == 1
 	}
 
 	//debug
-	println("releaseList: ${releaseList}")
 	println("headInfo: ${headInfo}")
-	println("headIsRelease: ${headIsRelease}")
 	println("workerJob: ${workerJob}")
 
-	built = false
-	release = ''
-	if (releaseList.size() > 0) {
-		release = releaseList[0]
-	}
+	configList.each { buildConfig, configProps ->
 
-	if (release != '') {
-		releaseCommit = release[0..6]
-		releaseInfo = release[8..-1]
+		stage("Current-${configProps.id}") {
+			println("Building: ${headInfo}, ${buildConfig}")
 
-		configList.each { buildConfig, configProps ->
+			build([job: workerJob,
+				parameters: [
+					[$class: 'StringParameterValue', name: 'bsRepo', value: bsRepo ],
+					[$class: 'StringParameterValue', name: 'buildGitCommit', value: buildCommit ],
+					[$class: 'StringParameterValue', name: 'buildInfo', value: headInfo ],
 
-			stage("Release-${configProps.id}") {
-				println("Building: ${release}, ${buildConfig}")
+					[$class: 'BooleanParameterValue', name: 'isOldRelease', value: false ],
 
-				build([job: workerJob,
-					parameters: [
-						[$class: 'StringParameterValue', name: 'bsRepo', value: bsRepo ],
-						[$class: 'StringParameterValue', name: 'buildGitCommit', value: releaseCommit ],
-						[$class: 'StringParameterValue', name: 'buildInfo', value: releaseInfo ],
+					[$class: 'StringParameterValue', name: 'buildConfig', value: buildConfig ],
 
-						// duplicate in old repo for old installer
-						[$class: 'BooleanParameterValue', name: 'isOldRelease', value: configProps.oldRelease ],
-
-						[$class: 'StringParameterValue', name: 'buildConfig', value: buildConfig ],
-
-						[$class: 'StringParameterValue', name: 'branchId', value: configProps.branchId ],
-						[$class: 'StringParameterValue', name: 'configId', value: configProps.id ]
-					]
-				])
-			}
-
-			built = true
+					[$class: 'StringParameterValue', name: 'branchId', value: configProps.branchId ],
+					[$class: 'StringParameterValue', name: 'configId', value: configProps.id ]
+				]
+			])
 		}
-
-		// save last release revision
-		saveLastReleaseRevision(releaseCommit)
-	}
-
-	if (newCommits && !headIsRelease) {
-
-		configList.each { buildConfig, configProps ->
-
-			stage("Current-${configProps.id}") {
-				println("Building: ${headInfo}, ${buildConfig}")
-
-				build([job: workerJob,
-					parameters: [
-						[$class: 'StringParameterValue', name: 'bsRepo', value: bsRepo ],
-						[$class: 'StringParameterValue', name: 'buildGitCommit', value: scmVars.GIT_COMMIT ],
-						[$class: 'StringParameterValue', name: 'buildInfo', value: headInfo ],
-
-						[$class: 'BooleanParameterValue', name: 'isOldRelease', value: false ],
-
-						[$class: 'StringParameterValue', name: 'buildConfig', value: buildConfig ],
-
-						[$class: 'StringParameterValue', name: 'branchId', value: configProps.branchId ],
-						[$class: 'StringParameterValue', name: 'configId', value: configProps.id ]
-					]
-				])
-			}
-
-			built = true
-		}
-	}
-
-	if (!built) {
-		println("Nothing new to build")
 	}
 }
