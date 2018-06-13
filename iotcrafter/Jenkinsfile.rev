@@ -32,6 +32,9 @@ def saveLastReleaseRevision(rev) {
 }
 
 node {
+	//debug
+	println("Params: ${params}")
+
 	stage('Cleanup') {
 		deleteDir()
 	}
