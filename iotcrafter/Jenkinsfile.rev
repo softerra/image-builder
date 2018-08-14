@@ -15,6 +15,8 @@ properties([disableConcurrentBuilds(),
 							daysToKeepStr: '',
 							numToKeepStr: '3')),
 			parameters([
+				string(defaultValue: '', description: '', name: 'bsRepo'),
+				string(defaultValue: '', description: '', name: 'bsBranch'),
 				booleanParam(defaultValue: false, description: 'force rebuild HEAD revision', name: 'rebuildCurrent'),
 				string(defaultValue: '',
 						description: 'if specified, overrides the commit which used as a start for looking for releases',
@@ -50,10 +52,15 @@ node {
 
 	stage('Sources') {
 		// use the same repo URL and branch as ones of this Jenkinsfile script
+		if (params.bsRepo != '' && params.bsBranch != '') {
+			bsRepo = params.bsRepo
+			bsBranch = params.bsBranch
+		} else {
 		def repoDef = scm.getUserRemoteConfigs()[0]
 		bsRepo = repoDef.getUrl()
 		def branchDef = scm.getBranches()[0]
 		bsBranch = branchDef.getName()
+		}
 
 		// debug
 		println("bsRepo: ${bsRepo}")

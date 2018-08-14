@@ -44,8 +44,13 @@ if [ -f config ]; then
 fi
 
 if [ -z "${IMG_NAME}" ]; then
-	echo "IMG_NAME not set in 'config', build default" 1>&2
-	IMG_NAME=iotcrafter-debian-jessie-v4.4
+	echo "IMG_NAME not set in 'config'" 1>&2
+	echo 1>&2
+fi
+
+if [ -z "${IMG_CONF}" ]; then
+	echo "IMG_CONF not set in 'config', build default" 1>&2
+	IMG_CONF=iotcrafter-debian-stretch-v4.9
 fi
 
 CONTAINER_NAME="${BUILD_SYS}_${DOCKER_CONTAINER_SUFFIX}_work"
@@ -74,6 +79,7 @@ if [ "$CONTAINER_EXISTS" != "" ] && [ "$CONTINUE" = "1" ]; then
 		--volumes-from="${CONTAINER_NAME}" \
 		--name "${CONTAINER_NAME}_cont" \
 		-e IMG_NAME=${IMG_NAME} \
+		-e IMG_CONF=${IMG_CONF} \
 		-v "$(pwd):/${BUILD_SYS}" -w "/${BUILD_SYS}" \
 		$DOCKER_IMG:$DOCKER_IMG_TAG \
 		bash -o pipefail -c "${buildCommand}" &
@@ -97,6 +103,7 @@ else
 	time $DOCKER run --privileged \
 		--name "${CONTAINER_NAME}" \
 		-e IMG_NAME=${IMG_NAME} \
+		-e IMG_CONF=${IMG_CONF} \
 		-v "$(pwd):/${BUILD_SYS}" -w "/${BUILD_SYS}" \
 		$DOCKER_IMG:$DOCKER_IMG_TAG \
 		bash -o pipefail -c "${buildCommand}" &

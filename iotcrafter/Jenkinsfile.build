@@ -68,7 +68,8 @@ node {
 			} else {
 				sh """#!/bin/bash
 					cat > config <<EOF
-IMG_NAME=${params.buildConfig}
+IMG_CONF=${params.buildConfig}
+IMG_NAME=${params.buildInfo}
 EOF
 				"""
 			}
