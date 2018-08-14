@@ -10,6 +10,10 @@ DIR="$PWD"
 if [ -f config ]; then
 	source config
 fi
+if [ -z "${IMG_CONF}" ]; then
+    echo "IMG_CONF not set" 1>&2
+    exit 1
+fi
 if [ -z "${IMG_NAME}" ]; then
     echo "IMG_NAME not set" 1>&2
     exit 1
@@ -19,6 +23,7 @@ fi
 
 cat > "${DIR}/chroot_before_hook" <<-__EOF__
 . ${DIR}/iotcrafter/restore_capemgr_service.sh
+. ${DIR}/iotcrafter/install_iotc_version.sh
 rm -f ${DIR}/chroot_before_hook
 __EOF__
 
@@ -29,8 +34,9 @@ __EOF__
 
 scripts/igcw.sh main-patch
 
-# IMG_NAME is actually name of config, e.g. iotcrafter-debian-jessie-v4.4
-./RootStock-NG.sh -c ${IMG_NAME}
+#export IMG_NAME
+# IMG_CONF is name of config, e.g. iotcrafter-debian-jessie-v4.4
+./RootStock-NG.sh -c ${IMG_CONF}
 
 scripts/igcw.sh main-restore
 
@@ -48,7 +54,7 @@ beaglebone="--dtb beaglebone --bbb-old-bootloader-in-emmc --hostname beaglebone"
 #beaglebone="--dtb beaglebone --rootfs_label rootfs --hostname beaglebone \
 #--enable-uboot-cape-overlays --enable-uboot-pru-rproc-44ti"
 
-# TODO: allow different image types for the same config (IMG_NAME)
+# TODO: allow different image types for the same config (IMG_CONF)
 # need revising pack-error-cleanup-try loop (postbuild.sh)
 
 # Publish options for original images (IOT images)

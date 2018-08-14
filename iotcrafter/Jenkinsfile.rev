@@ -15,7 +15,9 @@ properties([disableConcurrentBuilds(),
 							daysToKeepStr: '',
 							numToKeepStr: '5')),
 			parameters([
-				string(defaultValue: '', description: 'force building the specified revision, use HEAD by default', name: 'buildCommit')
+				string(defaultValue: '', description: 'force building the specified revision, use HEAD by default', name: 'buildCommit'),
+				string(defaultValue: '', description: '', name: 'bsRepo'),
+				string(defaultValue: '', description: '', name: 'bsBranch')
 			]),
 			pipelineTriggers([pollSCM('H 04 * * *')])
 		])
@@ -37,10 +39,15 @@ node {
 
 	stage('Sources') {
 		// use the same repo URL and branch as ones of this Jenkinsfile script
-		def repoDef = scm.getUserRemoteConfigs()[0]
-		bsRepo = repoDef.getUrl()
-		def branchDef = scm.getBranches()[0]
-		bsBranch = branchDef.getName()
+		if (params.bsRepo != '' && params.bsBranch != '') {
+			bsRepo = params.bsRepo
+			bsBranch = params.bsBranch
+		} else {
+			def repoDef = scm.getUserRemoteConfigs()[0]
+			bsRepo = repoDef.getUrl()
+			def branchDef = scm.getBranches()[0]
+			bsBranch = branchDef.getName()
+		}
 
 		// debug
 		println("bsRepo: ${bsRepo}")
