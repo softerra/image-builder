@@ -6,9 +6,21 @@
 # Iotcrafter Git Clone Workaround (igcw_ prefix)
 
 igcw_name='igcw.sh'		# $(basename $0) may not be the same! (when the script is included)
-igcw_s_port=51810
-igcw_c_port=50712
 igcw_recv_line_text=''
+
+#igcw_chroot_send_to_host_addr='127.0.0.1 51810'
+#igcw_chroot_recv_from_host_addr='127.0.0.1 -p 50712'
+
+#igcw_host_send_to_chroot_addr='127.0.0.1 50712'
+#igcw_host_recv_from_chroot_addr='127.0.0.1 -p 51810'
+#igcw_host_send_to_host_addr='127.0.0.1 51810'
+
+igcw_chroot_send_to_host_addr='-U /tmp/host_sock'
+igcw_chroot_recv_from_host_addr='-U /tmp/chroot_sock'
+
+igcw_host_send_to_chroot_addr='-U rootfs:/tmp/chroot_sock'
+igcw_host_recv_from_chroot_addr='-U rootfs:/tmp/host_sock'
+igcw_host_send_to_host_addr='-U rootfs:/tmp/host_sock'
 
 #-----------------
 # Common Functions
@@ -22,31 +34,31 @@ igcw_require_uid0()
 	fi
 }
 
-#$1 - port
+#$1 - addr
 igcw_exch_name()
 {
-	if [ "$1" = "$igcw_s_port" ]; then
-		echo "server"
-	elif [ "$1" = "$igcw_c_port" ]; then
-		echo "client"
+	if [[ "$1" =~ 'chroot_sock' ]] || [ "$1" = "$igcw_chroot_recv_from_host_addr" ]; then
+		echo "chroot"
+	elif [[ "$1" =~ 'host_sock' ]] || [ "$1" = "$igcw_host_recv_from_chroot_addr" ]; then
+		echo "host"
 	else
 		echo "common"
 	fi
 }
 
-# $1 - port
+# $1 - addr
 # $2 - line to send
 igcw_send_line()
 {
 	sleep 1
-	echo "$2" | nc -q1 127.0.0.1 $1
+	echo "$2" | nc -q1 $1
 }
 
-# $1 - port
+# $1 - addr
 igcw_recv_line()
 {
-	local line="$(nc -q3 -l 127.0.0.1 -p $1)"
-	echo "$igcw_name ($(igcw_exch_name $1)): igcw_recv_line_rc=$?"
+	local line="$(nc -q3 -l $1)"
+	echo "$igcw_name ($(igcw_exch_name '$1')): igcw_recv_line_rc=$?"
 	igcw_recv_line_text="$line"
 }
 
@@ -58,9 +70,9 @@ igcw_recv_line()
 igcw_git_clone_chroot()
 {
 	echo "$igcw_name (chroot): need to clone: '$*'"
-	igcw_send_line $igcw_s_port "git clone $*"
+	igcw_send_line "$igcw_chroot_send_to_host_addr" "git clone $*"
 	echo -n "$igcw_name (chroot): request sent, waiting answer.."
-	igcw_recv_line $igcw_c_port
+	igcw_recv_line "$igcw_chroot_recv_from_host_addr"
 	echo "$igcw_name (chroot): got answer: '$igcw_recv_line_text'"
 }
 
@@ -130,6 +142,7 @@ igcw_git_clone()
 	return $rc
 }
 
+# $1 - rootfs dir from host view
 igcw_clone_server_start()
 {
 	echo "$igcw_name: start clone server -> $(pwd)"
@@ -138,7 +151,7 @@ igcw_clone_server_start()
 	local rc=0
 	while [ 1 ]; do
 		echo "$igcw_name (server): wating next line.."
-		igcw_recv_line $igcw_s_port
+		igcw_recv_line "${igcw_host_recv_from_chroot_addr/rootfs:/$1}"
 		echo "$igcw_name (server): line got: '$igcw_recv_line_text'"
 
 		[ "$igcw_recv_line_text" = "exit" ] && break
@@ -153,7 +166,7 @@ igcw_clone_server_start()
 		fi
 
 		rc=$?
-		igcw_send_line $igcw_c_port "$rc"
+		igcw_send_line "${igcw_host_send_to_chroot_addr/rootfs:/$1}" "$rc"
 		echo "$igcw_name (server): answer sent: $rc"
 	done
 
@@ -161,10 +174,11 @@ igcw_clone_server_start()
 	return 0
 }
 
+# $1 - rootfs dir from host view
 igcw_clone_server_stop()
 {
 	echo "$igcw_name: stop clone server"
-	igcw_send_line $igcw_s_port 'exit'
+	igcw_send_line "${igcw_host_send_to_host_addr/rootfs:/$1}" 'exit'
 	return 0
 }
 
@@ -204,7 +218,7 @@ igcw_main()
 			igcw_require_uid0
 			[ -z "$2" -o ! -d "$2" ] && echo "$igcw_name: rootfs directory '$2' is wrong" && exit 1
 			cd $2
-			igcw_clone_server_start
+			igcw_clone_server_start $2
 			;;
 
 		patch)
@@ -220,7 +234,7 @@ igcw_main()
 			[ -z "$2" -o ! -d "$2" ] && echo "$igcw_name: rootfs directory '$2' is wrong" && exit 1
 			cd $2
 			rm -f ${igcw_name}
-			igcw_clone_server_stop
+			igcw_clone_server_stop $2
 			;;
 
 		*)
