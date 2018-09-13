@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 #
-# Copyright (c) 2012-2017 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2012-2018 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -79,7 +79,7 @@ check_defines () {
 		;;
 	ubuntu)
 		deb_components=${deb_components:-"main universe multiverse"}
-		deb_mirror=${deb_mirror:-"ports.ubuntu.com/ubuntu-ports"}
+		deb_mirror=${deb_mirror:-"ports.ubuntu.com/"}
 		;;
 	esac
 
@@ -306,24 +306,36 @@ sudo mv /tmp/01_noflash_kernel "${tempdir}/etc/dpkg/dpkg.cfg.d/01_noflash_kernel
 sudo mkdir -p "${tempdir}/usr/share/flash-kernel/db/" || true
 sudo cp -v "${OIB_DIR}/target/other/rcn-ee.db" "${tempdir}/usr/share/flash-kernel/db/"
 
+#generic apt.conf tweaks for flash/mmc devices to save on wasted space...
+sudo mkdir -p "${tempdir}/etc/apt/apt.conf.d/" || true
+
+#apt: emulate apt-get clean:
+echo '#Custom apt-get clean' > /tmp/02apt-get-clean
+echo 'DPkg::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb || true"; };' >> /tmp/02apt-get-clean
+echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb || true"; };' >> /tmp/02apt-get-clean
+sudo mv /tmp/02apt-get-clean "${tempdir}/etc/apt/apt.conf.d/02apt-get-clean"
+
+#apt: drop translations
+echo 'Acquire::Languages "none";' > /tmp/02-no-languages
+sudo mv /tmp/02-no-languages "${tempdir}/etc/apt/apt.conf.d/02-no-languages"
 
 if [ "x${deb_distribution}" = "xdebian" ] ; then
-	#generic apt.conf tweaks for flash/mmc devices to save on wasted space...
-	sudo mkdir -p "${tempdir}/etc/apt/apt.conf.d/" || true
-
-	#apt: emulate apt-get clean:
-	echo '#Custom apt-get clean' > /tmp/02apt-get-clean
-	echo 'DPkg::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb || true"; };' >> /tmp/02apt-get-clean
-	echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb || true"; };' >> /tmp/02apt-get-clean
-	sudo mv /tmp/02apt-get-clean "${tempdir}/etc/apt/apt.conf.d/02apt-get-clean"
-
-	#apt: drop translations
-	echo 'Acquire::Languages "none";' > /tmp/02-no-languages
-	sudo mv /tmp/02-no-languages "${tempdir}/etc/apt/apt.conf.d/02-no-languages"
-
 	#apt: /var/lib/apt/lists/, store compressed only
-	echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /tmp/02compress-indexes
-	sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
+	case "${deb_codename}" in
+	jessie)
+		echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /tmp/02compress-indexes
+		sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
+		;;
+	stretch)
+		echo 'Acquire::GzipIndexes "true"; APT::Compressor::xz::Cost "40";' > /tmp/02compress-indexes
+		sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
+		;;
+	buster|sid)
+		###FIXME: close to release switch to ^ xz, right now buster is slow on apt...
+		echo 'Acquire::GzipIndexes "true"; APT::Compressor::gzip::Cost "40";' > /tmp/02compress-indexes
+		sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
+		;;
+	esac
 
 	if [ "${apt_proxy}" ] ; then
 		#apt: make sure apt-cacher-ng doesn't break oracle-java8-installer
@@ -412,6 +424,14 @@ if [ "x${repo_rcnee}" = "xenable" ] ; then
 	echo "#deb-src [arch=armhf] http://repos.rcn-ee.com/${deb_distribution}/ ${deb_codename} main" >> ${wfile}
 
 	sudo cp -v "${OIB_DIR}/target/keyring/repos.rcn-ee.net-archive-keyring.asc" "${tempdir}/tmp/repos.rcn-ee.net-archive-keyring.asc"
+fi
+
+if [ "x${repo_ros}" = "xenable" ] ; then
+	echo "" >> ${wfile}
+	echo "deb [arch=armhf] http://packages.ros.org/ros/${deb_distribution} ${deb_codename} main" >> ${wfile}
+	echo "#deb-src [arch=armhf] http://packages.ros.org/ros/${deb_distribution} ${deb_codename} main" >> ${wfile}
+
+	sudo cp -v "${OIB_DIR}/target/keyring/ros-archive-keyring.asc" "${tempdir}/tmp/ros-archive-keyring.asc"
 fi
 
 if [ -f /tmp/sources.list ] ; then
@@ -597,6 +617,10 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 			apt-key add /tmp/repos.rcn-ee.net-archive-keyring.asc
 			rm -f /tmp/repos.rcn-ee.net-archive-keyring.asc || true
 		fi
+		if [ "x${repo_ros}" = "xenable" ] ; then
+			apt-key add /tmp/ros-archive-keyring.asc
+			rm -f /tmp/ros-archive-keyring.asc || true
+		fi
 		if [ "x${repo_external}" = "xenable" ] ; then
 		    if [ ! "x${repo_external_key}" = "x" ]; then
 			apt-key add /tmp/${repo_external_key}
@@ -659,17 +683,6 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 			apt-get -y \${apt_options} install ${deb_additional_pkgs}
 		fi
 
-		if [ ! "x${repo_rcnee_pkg_version}" = "x" ] ; then
-			echo "Log: (chroot) Installing modules for: ${repo_rcnee_pkg_version}"
-			apt-get -y \${apt_options} install mt7601u-modules-${repo_rcnee_pkg_version} || true
-			apt-get -y \${apt_options} install rtl8723bu-modules-${repo_rcnee_pkg_version} || true
-			apt-get -y \${apt_options} install ti-cmem-modules-${repo_rcnee_pkg_version} || true
-			apt-get -y \${apt_options} install ti-debugss-modules-${repo_rcnee_pkg_version} || true
-			apt-get -y \${apt_options} install ti-temperature-modules-${repo_rcnee_pkg_version} || true
-			depmod -a ${repo_rcnee_pkg_version}
-			update-initramfs -u -k ${repo_rcnee_pkg_version}
-		fi
-
 		if [ "x${chroot_enable_debian_backports}" = "xenable" ] ; then
 			if [ ! "x${chroot_debian_backports_pkg_list}" = "x" ] ; then
 				echo "Log: (chroot) Installing (from backports): ${chroot_debian_backports_pkg_list}"
@@ -680,6 +693,23 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		if [ ! "x${repo_external_pkg_list}" = "x" ] ; then
 			echo "Log: (chroot) Installing (from external repo): ${repo_external_pkg_list}"
 			apt-get -y \${apt_options} install ${repo_external_pkg_list}
+		fi
+
+		if [ ! "x${repo_ros_pkg_list}" = "x" ] ; then
+			echo "Log: (chroot) Installing (from external repo): ${repo_ros_pkg_list}"
+			apt-get -y \${apt_options} install ${repo_ros_pkg_list}
+		fi
+
+		##Install last...
+		if [ ! "x${repo_rcnee_pkg_version}" = "x" ] ; then
+			echo "Log: (chroot) Installing modules for: ${repo_rcnee_pkg_version}"
+			apt-get -y \${apt_options} install mt7601u-modules-${repo_rcnee_pkg_version} || true
+			apt-get -y \${apt_options} install rtl8723bu-modules-${repo_rcnee_pkg_version} || true
+			apt-get -y \${apt_options} install ti-cmem-modules-${repo_rcnee_pkg_version} || true
+			apt-get -y \${apt_options} install ti-debugss-modules-${repo_rcnee_pkg_version} || true
+			apt-get -y \${apt_options} install ti-temperature-modules-${repo_rcnee_pkg_version} || true
+			depmod -a ${repo_rcnee_pkg_version}
+			update-initramfs -u -k ${repo_rcnee_pkg_version}
 		fi
 	}
 
@@ -967,6 +997,10 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 			sed -i -e 's:#SystemMaxUse=:SystemMaxUse=8M:g' /etc/systemd/systemd-journald.conf
 		fi
 
+		if [ -f /etc/systemd/journald.conf ] ; then
+			sed -i -e 's:#SystemMaxUse=:SystemMaxUse=8M:g' /etc/systemd/journald.conf
+		fi
+
 		#systemd v215: systemd-timesyncd.service replaces ntpdate
 		#enabled by default in v216 (not in jessie)
 		if [ -f /lib/systemd/system/systemd-timesyncd.service ] ; then
@@ -975,7 +1009,9 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 			#set our own initial date stamp, otherwise we get July 2014
 			touch /var/lib/systemd/clock
-			chown systemd-timesync:systemd-timesync /var/lib/systemd/clock || true
+
+			#if systemd-timesync user exits, use that instead. (this user was removed in later systemd's)
+			cat /etc/group | grep ^systemd-timesync && chown systemd-timesync:systemd-timesync /var/lib/systemd/clock || true
 
 			#Remove ntpdate
 			if [ -f /usr/sbin/ntpdate ] ; then
@@ -1006,6 +1042,16 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		#No guarntee we will have an active network connection...
 		if [ -f /lib/systemd/system/apt-daily.service ] ; then
 			systemctl disable apt-daily.service || true
+		fi
+
+		#We use connman...
+		if [ -f /lib/systemd/system/systemd-networkd.service ] ; then
+			systemctl disable systemd-networkd.service || true
+		fi
+
+		#We use dnsmasq & connman...
+		if [ -f /lib/systemd/system/systemd-resolved.service ] ; then
+			systemctl disable systemd-resolved.service || true
 		fi
 	}
 
@@ -1075,6 +1121,11 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 	if [ -f /lib/systemd/systemd ] ; then
 		systemd_tweaks
+	fi
+
+	if [ -d /etc/update-motd.d/ ] ; then
+		#disable the message of the day (motd) welcome message
+		chmod -R 0644 /etc/update-motd.d/ || true
 	fi
 
 	if [ -f /etc/default/grub ] ; then
@@ -1285,6 +1336,13 @@ cat > "${DIR}/cleanup_script.sh" <<-__EOF__
 			rm -rf /etc/apt/apt.conf.d/03-proxy-https || true
 		fi
 
+		#update time stamp before final cleanup...
+		if [ -f /lib/systemd/system/systemd-timesyncd.service ] ; then
+			touch /var/lib/systemd/clock
+
+			cat /etc/group | grep ^systemd-timesync && chown systemd-timesync:systemd-timesync /var/lib/systemd/clock || true
+		fi
+
 #		#This is tmpfs, clear out any left overs...
 #		if [ -d /run/ ] ; then
 #			rm -rf /run/* || true
@@ -1295,6 +1353,12 @@ cat > "${DIR}/cleanup_script.sh" <<-__EOF__
 	}
 
 	cleanup
+
+	if [ -f /usr/bin/connmanctl ] ; then
+		rm -rf /etc/resolv.conf || true
+		ln -s /run/connman/resolv.conf /etc/resolv.conf
+	fi
+
 	rm -f /cleanup_script.sh || true
 __EOF__
 
