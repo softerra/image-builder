@@ -56,10 +56,10 @@ node {
 			bsRepo = params.bsRepo
 			bsBranch = params.bsBranch
 		} else {
-		def repoDef = scm.getUserRemoteConfigs()[0]
-		bsRepo = repoDef.getUrl()
-		def branchDef = scm.getBranches()[0]
-		bsBranch = branchDef.getName()
+			def repoDef = scm.getUserRemoteConfigs()[0]
+			bsRepo = repoDef.getUrl()
+			def branchDef = scm.getBranches()[0]
+			bsBranch = branchDef.getName()
 		}
 
 		// debug

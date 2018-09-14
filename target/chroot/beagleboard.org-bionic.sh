@@ -84,12 +84,12 @@ git_clone_full () {
 setup_system () {
 	#For when sed/grep/etc just gets way to complex...
 	cd /
-	if [ -f /opt/scripts/mods/debian-add-sbin-usr-sbin-to-default-path.diff ] ; then
-		if [ -f /usr/bin/patch ] ; then
-			echo "Patching: /etc/profile"
-			patch -p1 < /opt/scripts/mods/debian-add-sbin-usr-sbin-to-default-path.diff
-		fi
-	fi
+#	if [ -f /opt/scripts/mods/debian-add-sbin-usr-sbin-to-default-path.diff ] ; then
+#		if [ -f /usr/bin/patch ] ; then
+#			echo "Patching: /etc/profile"
+#			patch -p1 < /opt/scripts/mods/debian-add-sbin-usr-sbin-to-default-path.diff
+#		fi
+#	fi
 
 	echo "" >> /etc/securetty
 	echo "#USB Gadget Serial Port" >> /etc/securetty
@@ -106,13 +106,8 @@ setup_desktop () {
 		echo "" >> ${wfile}
 		echo "Section \"Device\"" >> ${wfile}
 		echo "        Identifier      \"Builtin Default fbdev Device 0\"" >> ${wfile}
-
-#		echo "        Driver          \"modesetting\"" >> ${wfile}
-#		echo "        Option          \"AccelMethod\"   \"none\"" >> ${wfile}
 		echo "        Driver          \"fbdev\"" >> ${wfile}
-
 		echo "#HWcursor_false        Option          \"HWcursor\"          \"false\"" >> ${wfile}
-
 		echo "EndSection" >> ${wfile}
 		echo "" >> ${wfile}
 		echo "Section \"Screen\"" >> ${wfile}
@@ -132,7 +127,7 @@ setup_desktop () {
 	if [ -f ${wfile} ] ; then
 		echo "Patching: ${wfile}"
 		sed -i -e 's:#autologin-user=:autologin-user='$rfs_username':g' ${wfile}
-		sed -i -e 's:#autologin-session=UNIMPLEMENTED:autologin-session='$rfs_default_desktop':g' ${wfile}
+		sed -i -e 's:#autologin-session=:autologin-session='$rfs_default_desktop':g' ${wfile}
 		if [ -f /opt/scripts/3rdparty/xinput_calibrator_pointercal.sh ] ; then
 			sed -i -e 's:#display-setup-script=:display-setup-script=/opt/scripts/3rdparty/xinput_calibrator_pointercal.sh:g' ${wfile}
 		fi
@@ -140,8 +135,8 @@ setup_desktop () {
 
 	if [ ! "x${rfs_desktop_background}" = "x" ] ; then
 		mkdir -p /home/${rfs_username}/.config/ || true
-		if [ -d /opt/scripts/desktop-defaults/jessie/lxqt/ ] ; then
-			cp -rv /opt/scripts/desktop-defaults/jessie/lxqt/* /home/${rfs_username}/.config
+		if [ -d /opt/scripts/desktop-defaults/stretch/lxqt/ ] ; then
+			cp -rv /opt/scripts/desktop-defaults/stretch/lxqt/* /home/${rfs_username}/.config
 		fi
 		chown -R ${rfs_username}:${rfs_username} /home/${rfs_username}/.config/
 	fi
@@ -155,48 +150,22 @@ setup_desktop () {
 	echo "xset s off" >> ${wfile}
 	echo "xsetroot -cursor_name left_ptr" >> ${wfile}
 	chown -R ${rfs_username}:${rfs_username} ${wfile}
-
-#	#Disable LXDE's screensaver on autostart
-#	if [ -f /etc/xdg/lxsession/LXDE/autostart ] ; then
-#		sed -i '/xscreensaver/s/^/#/' /etc/xdg/lxsession/LXDE/autostart
-#	fi
-
-	#echo "CAPE=cape-bone-proto" >> /etc/default/capemgr
-
-#	#root password is blank, so remove useless application as it requires a password.
-#	if [ -f /usr/share/applications/gksu.desktop ] ; then
-#		rm -f /usr/share/applications/gksu.desktop || true
-#	fi
-
-#	#lxterminal doesnt reference .profile by default, so call via loginshell and start bash
-#	if [ -f /usr/bin/lxterminal ] ; then
-#		if [ -f /usr/share/applications/lxterminal.desktop ] ; then
-#			sed -i -e 's:Exec=lxterminal:Exec=lxterminal -l -e bash:g' /usr/share/applications/lxterminal.desktop
-#			sed -i -e 's:TryExec=lxterminal -l -e bash:TryExec=lxterminal:g' /usr/share/applications/lxterminal.desktop
-#		fi
-#	fi
-
 }
 
 install_pip_pkgs () {
-	if [ -f /usr/bin/python ] ; then
-		wget https://bootstrap.pypa.io/get-pip.py || true
-		if [ -f get-pip.py ] ; then
-			python get-pip.py
-			rm -f get-pip.py || true
-
-			if [ -f /usr/local/bin/pip ] ; then
-				if [ -f /usr/bin/make ] ; then
-					echo "Installing pip packages"
-					git_repo="https://github.com/adafruit/adafruit-beaglebone-io-python.git"
-					git_target_dir="/opt/source/adafruit-beaglebone-io-python"
-					git_clone
-					if [ -f ${git_target_dir}/.git/config ] ; then
-						cd ${git_target_dir}/
-						sed -i -e 's:4.1.0:3.4.0:g' setup.py
-						python setup.py install
-					fi
-				fi
+	if [ -f /usr/bin/make ] ; then
+		echo "Installing pip packages"
+		git_repo="https://github.com/adafruit/adafruit-beaglebone-io-python.git"
+		git_target_dir="/opt/source/adafruit-beaglebone-io-python"
+		git_clone
+		if [ -f ${git_target_dir}/.git/config ] ; then
+			cd ${git_target_dir}/
+			sed -i -e 's:4.1.0:3.4.0:g' setup.py
+			if [ -f /usr/bin/python2 ] ; then
+				python2 setup.py install || true
+			fi
+			if [ -f /usr/bin/python3 ] ; then
+				python3 setup.py install || true
 			fi
 		fi
 	fi
@@ -218,6 +187,14 @@ install_git_repos () {
 			if [ -f /var/www/html/index.html ] ; then
 				rm -rf /var/www/html/index.html || true
 			fi
+		fi
+	fi
+
+	if [ -f /var/www/html/index.nginx-debian.html ] ; then
+		rm -rf /var/www/html/index.nginx-debian.html || true
+
+		if [ -d /opt/scripts/distro/buster/nginx/ ] ; then
+			cp -v /opt/scripts/distro/buster/nginx/default /etc/nginx/sites-available/default
 		fi
 	fi
 
@@ -255,11 +232,6 @@ install_git_repos () {
 	fi
 
 	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
-	git_target_dir="/opt/source/dtb-4.4-ti"
-	git_branch="4.4-ti"
-	git_clone_branch
-
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
 	git_target_dir="/opt/source/dtb-4.9-ti"
 	git_branch="4.9-ti"
 	git_clone_branch
@@ -272,22 +244,6 @@ install_git_repos () {
 	git_repo="https://github.com/beagleboard/bb.org-overlays"
 	git_target_dir="/opt/source/bb.org-overlays"
 	git_clone
-	if [ -f ${git_target_dir}/.git/config ] ; then
-		cd ${git_target_dir}/
-		if [ ! "x${repo_rcnee_pkg_version}" = "x" ] ; then
-			is_kernel=$(echo ${repo_rcnee_pkg_version} | grep 3.8.13 || true)
-			if [ "x${is_kernel}" = "x" ] ; then
-				if [ -f /usr/bin/make ] ; then
-					if [ ! -f /lib/firmware/BB-ADC-00A0.dtbo ] ; then
-						make
-						make install
-						make clean
-					fi
-					update-initramfs -u -k ${repo_rcnee_pkg_version}
-				fi
-			fi
-		fi
-	fi
 
 	git_repo="https://github.com/ungureanuvladvictor/BBBlfs"
 	git_target_dir="/opt/source/BBBlfs"
@@ -295,15 +251,13 @@ install_git_repos () {
 
 	git_repo="https://github.com/StrawsonDesign/Robotics_Cape_Installer"
 	git_target_dir="/opt/source/Robotics_Cape_Installer"
-	git_branch="v0.3.4"
-	git_clone_branch
+	git_clone
 
 	git_repo="https://github.com/mcdeoliveira/rcpy"
 	git_target_dir="/opt/source/rcpy"
-	git_clone_full
+	git_clone
 	if [ -f ${git_target_dir}/.git/config ] ; then
 		cd ${git_target_dir}/
-		git checkout 713de1a415a41efe05b5162947743407e193760e
 		if [ -f /usr/bin/python3 ] ; then
 			/usr/bin/python3 setup.py install
 		fi
@@ -327,11 +281,36 @@ install_git_repos () {
 	git_repo="https://github.com/jadonk/beagle-tester"
 	git_target_dir="/opt/source/beagle-tester"
 	git_clone
+	if [ -f ${git_target_dir}/.git/config ] ; then
+		if [ -f /usr/lib/libroboticscape.so ] ; then
+			cd ${git_target_dir}/
+			if [ -f /usr/bin/make ] ; then
+				make
+				make install || true
+#				if [ ! "x${image_type}" = "xtester-2gb" ] ; then
+#					systemctl disable beagle-tester.service || true
+#				fi
+			fi
+		fi
+	fi
 }
 
-install_build_pkgs () {
-	cd /opt/
-	cd /
+ros_initialize_rosdep () {
+	echo "ros: Initialize rosdep"
+	rosdep init
+
+	#su - ${rfs_username} -c "rosdep update"
+	ls -lha /home/
+
+	rosdep update
+
+	#13:38:25 Warning: running 'rosdep update' as root is not recommended.
+	#13:38:25   You should run 'sudo rosdep fix-permissions' and invoke 'rosdep update' again without sudo.
+	#13:40:15 reading in sources list data from /etc/ros/rosdep/sources.list.d
+
+	rosdep fix-permissions
+
+	echo "source /opt/ros/melodic/setup.bash" >> /home/${rfs_username}/.bashrc
 }
 
 other_source_links () {
@@ -350,24 +329,6 @@ other_source_links () {
 	chown -R ${rfs_username}:${rfs_username} /opt/source/
 }
 
-unsecure_root () {
-	root_password=$(cat /etc/shadow | grep root | awk -F ':' '{print $2}')
-	sed -i -e 's:'$root_password'::g' /etc/shadow
-
-	if [ -f /etc/ssh/sshd_config ] ; then
-		#Make ssh root@beaglebone work..
-		sed -i -e 's:PermitEmptyPasswords no:PermitEmptyPasswords yes:g' /etc/ssh/sshd_config
-		sed -i -e 's:UsePAM yes:UsePAM no:g' /etc/ssh/sshd_config
-		#Starting with Jessie:
-		sed -i -e 's:PermitRootLogin without-password:PermitRootLogin yes:g' /etc/ssh/sshd_config
-	fi
-
-	if [ -f /etc/sudoers ] ; then
-		#Don't require password for sudo access
-		echo "${rfs_username}  ALL=NOPASSWD: ALL" >>/etc/sudoers
-	fi
-}
-
 is_this_qemu
 
 setup_system
@@ -381,7 +342,6 @@ if [ -f /usr/bin/git ] ; then
 	git config --global --unset-all user.email
 	git config --global --unset-all user.name
 fi
-#install_build_pkgs
+ros_initialize_rosdep
 other_source_links
-#unsecure_root
 #
