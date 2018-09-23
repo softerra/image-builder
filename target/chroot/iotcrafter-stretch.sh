@@ -443,3 +443,5 @@ sed -i 's/^\(IOTC_WLAN_FORCE_IFUP=\).*$/\11/' /opt/iotc/bin/iotc_init.sh
 if [ -f /lib/systemd/system/capemgr.service ] ; then
 	systemctl enable capemgr.service || true
 fi
+
+chown -R ${rfs_username}:${rfs_username} /home/${rfs_username}
