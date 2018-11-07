@@ -1,0 +1,12 @@
+When a build is failed and the container 'image-builder_iotc_work' is present,
+* run shell-to-container.sh ==>
+	1) this will run a container named 'image-builder_iotc_work_debug'
+	with the same image with mounted volumes from the container image-builder_iotc_work
+	2) you'll get a shell like:
+root@40a2fbb6f621:/image-builder#
+
+** run iotcrafter/dbg/chroot.sh ignore/tmp.X (X - a specific random string assigned to the temporary rootfs) ==>
+	this will bring you into a shell within the current BeagleBone rootfs
+or
+** run iotcrafter/dbg/run-on-chroot.sh ignore/tmp.X script.sh ==>
+	this will run the given script in the chroot environment
