@@ -18,14 +18,17 @@ if ! $DOCKER ps >/dev/null; then
 	exit 1
 fi
 
+DOCKER_OPTS=""
 if [ "$1" = "docker" ]; then
 	echo "(Re-)building docker image only.."
+	DOCKER_OPTS=$2 #e.g.--no-cache
 	docker image rm "$DOCKER_IMG:$DOCKER_IMG_TAG"
 else
 	echo "Building docker image as need.."
 fi
 
 $DOCKER build \
+	$DOCKER_OPTS \
 	--build-arg DEB_DISTRO=$DOCKER_IMG_TAG \
 	-t "$DOCKER_IMG:$DOCKER_IMG_TAG" \
 	-f iotcrafter/Dockerfile.iotcrafter iotcrafter/
