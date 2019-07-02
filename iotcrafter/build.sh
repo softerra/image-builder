@@ -31,13 +31,13 @@ cat > "${DIR}/chroot_after_hook" <<-__EOF__
 rm -f ${DIR}/chroot_after_hook
 __EOF__
 
-scripts/igcw.sh main-patch
+#scripts/igcw.sh main-patch
 
 #export IMG_NAME
 # IMG_CONF is name of config, e.g. iotcrafter-debian-jessie-v4.4
 ./RootStock-NG.sh -c ${IMG_CONF}
 
-scripts/igcw.sh main-restore
+#scripts/igcw.sh main-restore
 
 # Rootfs is ready
 echo "Rootfs Done: $(date)"
