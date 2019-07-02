@@ -22,7 +22,7 @@
 
 #http://ftp.us.debian.org/debian/pool/main/d/debootstrap/
 #1.0.${minimal_debootstrap}
-minimal_debootstrap="101"
+minimal_debootstrap="114"
 host_arch="$(uname -m)"
 
 debootstrap_is_installed () {
@@ -31,9 +31,10 @@ debootstrap_is_installed () {
 
 	if [ "x${host_arch}" != "xarmv7l" ] ; then
 		if [ "x${host_arch}" != "xaarch64" ] ; then
-			echo "QEMU is un-reliable, thus no longer supported... Spend some Money and buy a real ARMHF device to run this script."
+			#FIXME:...
+			#echo "QEMU is un-reliable, thus no longer supported... Spend some Money and buy a real ARMHF device to run this script."
 			#FIXME: comment out the next line to use QEMU
-#			exit 2
+			#exit 2
 			dpkg -l | grep qemu-user-static >/dev/null || deb_pkgs="${deb_pkgs}qemu-user-static "
 			dpkg -l | grep $(dpkg --print-architecture) | grep -v "qemu-" | grep qemu >/dev/null || deb_pkgs="${deb_pkgs}qemu "
 		fi
