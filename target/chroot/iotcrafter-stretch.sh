@@ -241,24 +241,24 @@ install_git_repos () {
 		patch -p1 < /tmp/nginx.patch
 	fi
 
-	git_repo="https://github.com/prpplague/Userspace-Arduino"
-	git_target_dir="/opt/source/Userspace-Arduino"
-	git_clone
+	#git_repo="https://github.com/prpplague/Userspace-Arduino"
+	#git_target_dir="/opt/source/Userspace-Arduino"
+	#git_clone
 
 	git_repo="https://github.com/strahlex/BBIOConfig.git"
 	git_target_dir="/opt/source/BBIOConfig"
 	git_clone
 
-	git_repo="https://github.com/prpplague/fb-test-app.git"
-	git_target_dir="/opt/source/fb-test-app"
-	git_clone
-	if [ -f ${git_target_dir}/.git/config ] ; then
-		cd ${git_target_dir}/
-		if [ -f /usr/bin/make ] ; then
-			make
-		fi
-		cd /
-	fi
+	#git_repo="https://github.com/prpplague/fb-test-app.git"
+	#git_target_dir="/opt/source/fb-test-app"
+	#git_clone
+	#if [ -f ${git_target_dir}/.git/config ] ; then
+	#	cd ${git_target_dir}/
+	#	if [ -f /usr/bin/make ] ; then
+	#		make
+	#	fi
+	#	cd /
+	#fi
 
 	#am335x-pru-package
 	if [ -f /usr/include/prussdrv.h ] ; then
@@ -394,7 +394,7 @@ other_source_links
 #unsecure_root
 #
 # install it here when almost whole system is set up (debian user exists)
-#npm config set unsafe-perm true
+npm config set unsafe-perm true
 npm install yarn -g
 npm i npm@latest -g
 
@@ -410,6 +410,7 @@ apt-get -y update
 echo iotc iotc/cpuid string BBB | debconf-set-selections
 echo iotc iotc/kernvers string ${repo_rcnee_pkg_version} | debconf-set-selections
 echo iotc iotc/load-overlays boolean false | debconf-set-selections
+echo iotc iotc/uboot-overlays boolean true | debconf-set-selections
 
 apt-get -y install iotc-core iotc-ide
 dpkg-reconfigure -fnoninteractive -plow unattended-upgrades
