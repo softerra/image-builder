@@ -14,7 +14,7 @@ Iotcrafter Docker Build
 	- create iotcrafter-specific hook for chroot.sh (copy our DT overlays)
 	- build image in standard way with ./RootStock-NG.sh + iotcrafter config
 	- prepare image wraping script
-	- create iotcrafter-specific hook for setup_sdcard.sh (patch /boot/uEnv.txt, /uEnv.txt)
+	- create iotcrafter-specific hook for setup_sdcard.sh (patch /boot/uEnv.txt)
 	- run image wraping script
 
 *** postbuild.sh
@@ -86,7 +86,7 @@ build-docker-iotcrafter.sh
 
 			- prepare a script for wraping result image
 			- prepare a hook (setup_sdcard_populate_after_hook) for the final image making script setup_sdcard.sh
-				- [IOTC] will edit the final /boot/uEnv.txt and /uEnv.txt
+				- [IOTC] will edit the final /boot/uEnv.txt
 			- call the script wraping result image (gift_wrap_final_images.sh)
 				- copy setup_sdcard_populate_after_hook to the dir of setup_sdcard.sh
 				- call setup_sdcard.sh with options
@@ -99,7 +99,6 @@ build-docker-iotcrafter.sh
 										insert init=..iotc_init.sh,
 										disable possible overrides of default DTB
 										diablepossibleuse of u-boot overlays
-							- edit /uEnv.txt: insert code substituting default DTB
 
 		- get RC of the build and handle it to postbuild.sh script
 			- get RC and save it to build_rc file

@@ -133,9 +133,9 @@ cat > ${DIR}/deploy/setup_sdcard_populate_after_hook <<-__EOF__
                     s/^#*enable_uboot_overlays=[0-1]/enable_uboot_overlays=0/' \${TEMPDIR}/disk/boot/uEnv.txt
             echo "/boot/uEnv.txt: init script defined, no override for default DTB ensured"
 
-            sed -i '/^loadall=/ifixfdt=echo IoTC: check \${fdtbase}..; if test \${fdtbase} = am335x-boneblack; then setenv fdtbase am335x-boneblack-emmc-overlay; setenv fdtfile am335x-boneblack-emmc-overlay.dtb; fi; if test \${fdtbase} = am335x-boneblack-wireless; then setenv fdtbase am335x-boneblack-wireless-emmc-overlay; setenv fdtfile am335x-boneblack-wireless-emmc-overlay.dtb; fi;' \${TEMPDIR}/disk/uEnv.txt
-            sed -i 's/^\(loadall=.*\)run loadxrd; run loadxfdt;\(.*\)$/\1run loadxrd; run fixfdt; run loadxfdt;\2/' \${TEMPDIR}/disk/uEnv.txt
-            echo "/uEnv.txt: DTB substitution defined"
+            #sed -i '/^loadall=/ifixfdt=echo IoTC: check \${fdtbase}..; if test \${fdtbase} = am335x-boneblack; then setenv fdtbase am335x-boneblack-emmc-overlay; setenv fdtfile am335x-boneblack-emmc-overlay.dtb; fi; if test \${fdtbase} = am335x-boneblack-wireless; then setenv fdtbase am335x-boneblack-wireless-emmc-overlay; setenv fdtfile am335x-boneblack-wireless-emmc-overlay.dtb; fi;' \${TEMPDIR}/disk/uEnv.txt
+            #sed -i 's/^\(loadall=.*\)run loadxrd; run loadxfdt;\(.*\)$/\1run loadxrd; run fixfdt; run loadxfdt;\2/' \${TEMPDIR}/disk/uEnv.txt
+            #echo "/uEnv.txt: DTB substitution defined"
         ;;
     esac
 __EOF__
