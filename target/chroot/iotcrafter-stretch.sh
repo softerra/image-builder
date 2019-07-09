@@ -182,7 +182,7 @@ setup_desktop () {
 
 #setup_A2DP - setup audio through bluethooth for Wireless board ?
 
-install_pip_pkgs () {
+install_git_repos () {
 	if [ -f /usr/bin/make ] ; then
 		echo "Installing pip packages"
 		git_repo="https://github.com/adafruit/adafruit-beaglebone-io-python.git"
