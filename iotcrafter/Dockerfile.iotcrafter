@@ -29,7 +29,7 @@ RUN apt-get -y install \
 # need for BBB image-builder
 RUN apt-get -y install \
 		sudo netcat-openbsd qemu \
-		dosfstools git-core kpartx wget parted \
+		dosfstools git kpartx wget parted \
 	&& rm -rf /var/lib/apt/lists/*
 
 VOLUME [ "/image-builder/ignore" ]
