@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 #
-# Copyright (c) 2012-2018 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2012-2019 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,8 +26,9 @@ time=$(date +%Y-%m-%d)
 OIB_DIR="$(dirname "$( cd "$(dirname "$0")" ; pwd -P )" )"
 chroot_completed="false"
 
-abi=ab
+abi=ac
 
+#ac=change /sys/kernel/debug mount persmissions
 #ab=efi added 20180321
 #aa
 
@@ -141,6 +142,13 @@ check_defines () {
 		if [ ! "x${repo_rcnee_pkg_list}" = "x" ] ; then
 			include=$(echo ${repo_rcnee_pkg_list} | sed 's/,/ /g' | sed 's/\t/,/g')
 			deb_additional_pkgs="${deb_additional_pkgs} ${include}"
+		fi
+
+		if [ "x${repo_rcnee_sgx}" = "xenable" ] ; then
+			if [ ! "x${repo_rcnee_sgx_pkg_list}" = "x" ] ; then
+				include=$(echo ${repo_rcnee_sgx_pkg_list} | sed 's/,/ /g' | sed 's/\t/,/g')
+				deb_additional_pkgs="${deb_additional_pkgs} ${include}"
+			fi
 		fi
 	fi
 }
@@ -356,38 +364,47 @@ echo "deb http://${deb_mirror} ${deb_codename} ${deb_components}" > ${wfile}
 echo "#deb-src http://${deb_mirror} ${deb_codename} ${deb_components}" >> ${wfile}
 echo "" >> ${wfile}
 
+#https://wiki.debian.org/StableUpdates
 case "${deb_codename}" in
 buster|sid)
 	echo "#deb http://${deb_mirror} ${deb_codename}-updates ${deb_components}" >> ${wfile}
 	echo "##deb-src http://${deb_mirror} ${deb_codename}-updates ${deb_components}" >> ${wfile}
+	echo "" >> ${wfile}
+	;;
+jessie)
+	echo "###For Debian 8 Jessie, jessie-updates no longer exists as this suite no longer receives updates since 2018-05-17." >> ${wfile}
 	;;
 *)
 	echo "deb http://${deb_mirror} ${deb_codename}-updates ${deb_components}" >> ${wfile}
 	echo "#deb-src http://${deb_mirror} ${deb_codename}-updates ${deb_components}" >> ${wfile}
+	echo "" >> ${wfile}
 	;;
 esac
 
+#https://wiki.debian.org/LTS/Using
 case "${deb_codename}" in
 jessie|stretch)
-	echo "" >> ${wfile}
 	echo "deb http://deb.debian.org/debian-security ${deb_codename}/updates ${deb_components}" >> ${wfile}
 	echo "#deb-src http://deb.debian.org/debian-security ${deb_codename}/updates ${deb_components}" >> ${wfile}
 	echo "" >> ${wfile}
-	if [ "x${chroot_enable_debian_backports}" = "xenable" ] ; then
-		echo "deb http://deb.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
-		echo "#deb-src http://deb.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
-	else
-		echo "#deb http://deb.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
-		echo "##deb-src http://deb.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
-	fi
 	;;
 buster|sid)
-	echo "" >> ${wfile}
 	echo "#deb http://deb.debian.org/debian-security ${deb_codename}/updates ${deb_components}" >> ${wfile}
 	echo "##deb-src http://deb.debian.org/debian-security ${deb_codename}/updates ${deb_components}" >> ${wfile}
 	echo "" >> ${wfile}
 	;;
 esac
+
+#https://wiki.debian.org/Backports
+if [ "x${chroot_enable_debian_backports}" = "xenable" ] ; then
+	case "${deb_codename}" in
+	jessie|stretch)
+		echo "deb http://deb.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
+		echo "#deb-src http://deb.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
+		echo "" >> ${wfile}
+		;;
+	esac
+fi
 
 if [ "x${repo_external}" = "xenable" ] ; then
 	echo "" >> ${wfile}
@@ -409,6 +426,13 @@ if [ ! "x${repo_nodesource}" = "x" ] ; then
 	echo "#deb-src https://deb.nodesource.com/${repo_nodesource} ${repo_nodesource_dist} main" >> ${wfile}
 	echo "" >> ${wfile}
 	sudo cp -v "${OIB_DIR}/target/keyring/nodesource.gpg.key" "${tempdir}/tmp/nodesource.gpg.key"
+fi
+
+if [ "x${repo_azulsystems}" = "xenable" ] ; then
+	echo "" >> ${wfile}
+	echo "deb http://repos.azulsystems.com/${deb_distribution} stable main" >> ${wfile}
+	echo "" >> ${wfile}
+	sudo cp -v "${OIB_DIR}/target/keyring/repos.azulsystems.com.pubkey.asc" "${tempdir}/tmp/repos.azulsystems.com.pubkey.asc"
 fi
 
 if [ "x${repo_rcnee}" = "xenable" ] ; then
@@ -473,17 +497,7 @@ if [ "x${deb_arch}" = "xarmhf" ] ; then
 	case "${deb_distribution}" in
 	debian)
 		case "${deb_codename}" in
-		jessie)
-			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
-			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
-			sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
-			sudo cp "${OIB_DIR}/target/init_scripts/systemd-capemgr.service" "${tempdir}/lib/systemd/system/capemgr.service"
-			sudo chown root:root "${tempdir}/lib/systemd/system/capemgr.service"
-			sudo cp "${OIB_DIR}/target/init_scripts/capemgr" "${tempdir}/etc/default/"
-			sudo chown root:root "${tempdir}/etc/default/capemgr"
-			distro="Debian"
-			;;
-		stretch|buster)
+		jessie|stretch|buster)
 			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
 			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
 			sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
@@ -493,16 +507,6 @@ if [ "x${deb_arch}" = "xarmhf" ] ; then
 		;;
 	ubuntu)
 		case "${deb_codename}" in
-		vivid|wily|xenial)
-			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
-			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
-			sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
-			sudo cp "${OIB_DIR}/target/init_scripts/systemd-capemgr.service" "${tempdir}/lib/systemd/system/capemgr.service"
-			sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
-			sudo cp "${OIB_DIR}/target/init_scripts/capemgr" "${tempdir}/etc/default/"
-			sudo chown root:root "${tempdir}/etc/default/capemgr"
-			distro="Ubuntu"
-			;;
 		bionic)
 			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
 			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
@@ -518,15 +522,6 @@ if [ "x${deb_arch}" = "xarmel" ] ; then
 	sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
 	sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
 	distro="Debian"
-fi
-
-if [ -d "${tempdir}/usr/share/initramfs-tools/hooks/" ] ; then
-	if [ ! -f "${tempdir}/usr/share/initramfs-tools/hooks/dtbo" ] ; then
-		echo "log: adding: [initramfs-tools hook: dtbo]"
-		sudo cp "${OIB_DIR}/target/other/dtbo" "${tempdir}/usr/share/initramfs-tools/hooks/"
-		sudo chmod +x "${tempdir}/usr/share/initramfs-tools/hooks/dtbo"
-		sudo chown root:root "${tempdir}/usr/share/initramfs-tools/hooks/dtbo"
-	fi
 fi
 
 #Backward compatibility, as setup_sdcard.sh expects [lsb_release -si > /etc/rcn-ee.conf]
@@ -591,27 +586,16 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 			dpkg-divert --local --rename --add /sbin/initctl
 			ln -s /bin/true /sbin/initctl
 		fi
-
-		apt_options="--force-yes"
-		if [ "x\${deb_codename}" = "xstretch" ] ; then
-			apt_options=""
-		fi
-		if [ "x\${deb_codename}" = "xbuster" ] ; then
-			apt_options=""
-		fi
-		if [ "x\${deb_codename}" = "xxenial" ] ; then
-			apt_options="--allow-downgrades --allow-remove-essential --allow-change-held-packages"
-		fi
-		if [ "x\${deb_codename}" = "xbionic" ] ; then
-			apt_options=""
-		fi
-		echo "Log: (chroot): apt using extra: [\${apt_options}]"
 	}
 
 	install_pkg_updates () {
 		if [ -f /tmp/nodesource.gpg.key ] ; then
 			apt-key add /tmp/nodesource.gpg.key
 			rm -f /tmp/nodesource.gpg.key || true
+		fi
+		if [ -f /tmp/repos.azulsystems.com.pubkey.asc ] ; then
+			apt-key add /tmp/repos.azulsystems.com.pubkey.asc
+			rm -f /tmp/repos.azulsystems.com.pubkey.asc || true
 		fi
 		if [ "x${repo_rcnee}" = "xenable" ] ; then
 			apt-key add /tmp/repos.rcn-ee.net-archive-keyring.asc
@@ -632,9 +616,38 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 			rm -f /tmp/${repo_flat_key} || true
 		fi
 
+		if [ -f /etc/resolv.conf ] ; then
+			echo "debug: networking: --------------"
+			cat /etc/resolv.conf || true
+			echo "---------------------------------"
+			cp -v /etc/resolv.conf /etc/resolv.conf.bak
+		fi
+
+		echo "---------------------------------"
+		echo "debug: apt-get update------------"
 		apt-get update
-		apt-get upgrade -y \${apt_options}
-		apt-get dist-upgrade -y \${apt_options}
+		echo "---------------------------------"
+
+		echo "debug: apt-get upgrade -y--------"
+		apt-get upgrade -y
+
+		if [ ! -f /etc/resolv.conf ] ; then
+			echo "debug: /etc/resolv.conf was removed! Fixing..."
+			#'/etc/resolv.conf.bak' -> '/etc/resolv.conf'
+			#cp: not writing through dangling symlink '/etc/resolv.conf'
+			cp -v --remove-destination /etc/resolv.conf.bak /etc/resolv.conf
+		fi
+		echo "---------------------------------"
+
+		echo "debug: apt-get dist-upgrade -y---"
+		apt-get dist-upgrade -y
+		if [ ! -f /etc/resolv.conf ] ; then
+			echo "debug: /etc/resolv.conf was removed! Fixing..."
+			#'/etc/resolv.conf.bak' -> '/etc/resolv.conf'
+			#cp: not writing through dangling symlink '/etc/resolv.conf'
+			cp -v --remove-destination /etc/resolv.conf.bak /etc/resolv.conf
+		fi
+		echo "---------------------------------"
 
 		if [ "x${chroot_very_small_image}" = "xenable" ] ; then
 			if [ -f /bin/busybox ] ; then
@@ -680,34 +693,56 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 			#Install the user choosen list.
 			echo "Log: (chroot) Installing: ${deb_additional_pkgs}"
 			apt-get update
-			apt-get -y \${apt_options} install ${deb_additional_pkgs}
+			apt-get -y install ${deb_additional_pkgs}
 		fi
 
 		if [ "x${chroot_enable_debian_backports}" = "xenable" ] ; then
 			if [ ! "x${chroot_debian_backports_pkg_list}" = "x" ] ; then
 				echo "Log: (chroot) Installing (from backports): ${chroot_debian_backports_pkg_list}"
-				sudo apt-get -y \${apt_options} -t ${deb_codename}-backports install ${chroot_debian_backports_pkg_list}
+				sudo apt-get -y -t ${deb_codename}-backports install ${chroot_debian_backports_pkg_list}
 			fi
 		fi
 
 		if [ ! "x${repo_external_pkg_list}" = "x" ] ; then
 			echo "Log: (chroot) Installing (from external repo): ${repo_external_pkg_list}"
-			apt-get -y \${apt_options} install ${repo_external_pkg_list}
+			apt-get -y install ${repo_external_pkg_list}
 		fi
 
 		if [ ! "x${repo_ros_pkg_list}" = "x" ] ; then
 			echo "Log: (chroot) Installing (from external repo): ${repo_ros_pkg_list}"
-			apt-get -y \${apt_options} install ${repo_ros_pkg_list}
+			apt-get -y install ${repo_ros_pkg_list}
+			#ROS: ubuntu, extra crude, cleanup....
+			apt autoremove -y || true
+		fi
+
+		if [ ! "x${repo_rcnee_chromium_special}" = "x" ] ; then
+			echo "Log: (chroot) Chromium Special:"
+			apt-cache madison chromium || true
+			apt -y --allow-downgrades install chromium=${repo_rcnee_chromium_special}* || true
+			apt-mark hold chromium || true
+		fi
+
+		#Lets force depmod...
+		if [ ! "x${repo_rcnee_depmod0}" = "x" ] ; then
+			echo "Log: (chroot) Running depmod for: ${repo_rcnee_depmod0}"
+			depmod -a ${repo_rcnee_depmod0}
+			update-initramfs -u -k ${repo_rcnee_depmod0}
+		fi
+
+		#Lets force depmod...
+		if [ ! "x${repo_rcnee_depmod1}" = "x" ] ; then
+			echo "Log: (chroot) Running depmod for: ${repo_rcnee_depmod1}"
+			depmod -a ${repo_rcnee_depmod1}
+			update-initramfs -u -k ${repo_rcnee_depmod1}
 		fi
 
 		##Install last...
 		if [ ! "x${repo_rcnee_pkg_version}" = "x" ] ; then
 			echo "Log: (chroot) Installing modules for: ${repo_rcnee_pkg_version}"
-			apt-get -y \${apt_options} install mt7601u-modules-${repo_rcnee_pkg_version} || true
-			apt-get -y \${apt_options} install rtl8723bu-modules-${repo_rcnee_pkg_version} || true
-			apt-get -y \${apt_options} install ti-cmem-modules-${repo_rcnee_pkg_version} || true
-			apt-get -y \${apt_options} install ti-debugss-modules-${repo_rcnee_pkg_version} || true
-			apt-get -y \${apt_options} install ti-temperature-modules-${repo_rcnee_pkg_version} || true
+			apt-get -y install libpruio-modules-${repo_rcnee_pkg_version} || true
+			apt-get -y install rtl8723bu-modules-${repo_rcnee_pkg_version} || true
+			apt-get -y install rtl8821cu-modules-${repo_rcnee_pkg_version} || true
+			apt-get -y install ti-cmem-modules-${repo_rcnee_pkg_version} || true
 			depmod -a ${repo_rcnee_pkg_version}
 			update-initramfs -u -k ${repo_rcnee_pkg_version}
 		fi
@@ -720,7 +755,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 		if [ ! "x${rfs_ssh_banner}" = "x" ] || [ ! "x${rfs_ssh_user_pass}" = "x" ] ; then
 			if [ -f /etc/ssh/sshd_config ] ; then
-				sed -i -e 's:#Banner:Banner:g' /etc/ssh/sshd_config
+				sed -i -e 's:#Banner none:Banner /etc/issue.net:g' /etc/ssh/sshd_config
 			fi
 		fi
 	}
@@ -758,7 +793,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 	run_deborphan () {
 		echo "Log: (chroot): deborphan is not reliable, run manual and add pkg list to: [chroot_manual_deborphan_list]"
-		apt-get -y \${apt_options} install deborphan
+		apt-get -y install deborphan
 
 		# Prevent deborphan from removing explicitly required packages
 		deborphan -A ${deb_additional_pkgs} ${repo_external_pkg_list} ${deb_include}
@@ -919,29 +954,10 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 	debian_startup_script () {
 		echo "Log: (chroot): debian_startup_script"
-		if [ "x${rfs_startup_scripts}" = "xenable" ] ; then
-			if [ -f /etc/init.d/generic-boot-script.sh ] ; then
-				chown root:root /etc/init.d/generic-boot-script.sh
-				chmod +x /etc/init.d/generic-boot-script.sh
-				insserv generic-boot-script.sh || true
-			fi
-
-			if [ -f /etc/init.d/capemgr.sh ] ; then
-				chown root:root /etc/init.d/capemgr.sh
-				chown root:root /etc/default/capemgr
-				chmod +x /etc/init.d/capemgr.sh
-				insserv capemgr.sh || true
-			fi
-		fi
 	}
 
 	ubuntu_startup_script () {
 		echo "Log: (chroot): ubuntu_startup_script"
-		if [ "x${rfs_startup_scripts}" = "xenable" ] ; then
-			if [ -f /etc/init/generic-boot-script.conf ] ; then
-				chown root:root /etc/init/generic-boot-script.conf
-			fi
-		fi
 
 		#Not Optional...
 		#(protects your kernel, from Ubuntu repo which may try to take over your system on an upgrade)...
@@ -963,10 +979,6 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 		if [ -f /lib/systemd/system/generic-board-startup.service ] ; then
 			systemctl enable generic-board-startup.service || true
-		fi
-
-		if [ -f /lib/systemd/system/capemgr.service ] ; then
-			systemctl enable capemgr.service || true
 		fi
 
 		if [ ! "x${rfs_opt_scripts}" = "x" ] ; then
@@ -1015,7 +1027,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 			#Remove ntpdate
 			if [ -f /usr/sbin/ntpdate ] ; then
-				apt-get remove -y \${apt_options} ntpdate --purge || true
+				apt-get remove -y ntpdate --purge || true
 			fi
 		fi
 
@@ -1039,9 +1051,20 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 			systemctl disable ureadahead.service || true
 		fi
 
-		#No guarntee we will have an active network connection...
+		#No guarantee we will have an active network connection...
+		#debian@beaglebone:~$ sudo systemd-analyze blame | grep apt-daily.service
+		#     9.445s apt-daily.services
 		if [ -f /lib/systemd/system/apt-daily.service ] ; then
 			systemctl disable apt-daily.service || true
+			systemctl disable apt-daily.timer || true
+		fi
+
+		#No guarantee we will have an active network connection...
+		#debian@beaglebone:~$ sudo systemd-analyze blame | grep apt-daily-upgrade.service
+		#     10.300s apt-daily-upgrade.service
+		if [ -f /lib/systemd/system/apt-daily-upgrade.service ] ; then
+			systemctl disable apt-daily-upgrade.service || true
+			systemctl disable apt-daily-upgrade.timer || true
 		fi
 
 		#We use connman...
@@ -1052,6 +1075,23 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		#We use dnsmasq & connman...
 		if [ -f /lib/systemd/system/systemd-resolved.service ] ; then
 			systemctl disable systemd-resolved.service || true
+		fi
+
+		#Kill man-db
+		#debian@beaglebone:~$ sudo systemd-analyze blame | grep man-db.service
+		#    4min 10.587s man-db.service
+		if [ -f /lib/systemd/system/man-db.service ] ; then
+			systemctl disable man-db.service || true
+			systemctl disable man-db.timer || true
+		fi
+
+		#Anyone who needs this can enable it...
+		if [ -f /lib/systemd/system/pppd-dns.service ] ; then
+			systemctl disable pppd-dns.service || true
+		fi
+
+		if [ -f /lib/systemd/system/hostapd.service ] ; then
+			systemctl disable hostapd.service || true
 		fi
 	}
 
@@ -1132,6 +1172,10 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		grub_tweaks
 	fi
 
+	if [ -d /opt/sgx/ ] ; then
+		chown -R ${rfs_username}:${rfs_username} /opt/sgx/
+	fi
+
 	rm -f /chroot_script.sh || true
 __EOF__
 
@@ -1172,6 +1216,16 @@ if [ "x${include_firmware}" = "xenable" ] ; then
 	if [ -f "${DIR}/git/linux-firmware/mt7601u.bin" ] ; then
 		sudo cp "${DIR}/git/linux-firmware/mt7601u.bin" "${tempdir}/lib/firmware/mt7601u.bin"
 	fi
+fi
+
+if [ "x${repo_rcnee_sgx}" = "xenable" ] ; then
+	sgx_http="https://rcn-ee.net/repos/debian/pool/main"
+	sudo mkdir -p "${tempdir}/opt/sgx/"
+	sudo wget --directory-prefix="${tempdir}/opt/sgx/" ${sgx_http}/t/ti-sgx-ti33x-ddk-um/ti-sgx-ti33x-ddk-um_1.14.3699939-git20171201.0-0rcnee9~stretch+20190328_armhf.deb
+	sudo wget --directory-prefix="${tempdir}/opt/sgx/" ${sgx_http}/t/ti-sgx-ti335x-modules-${repo_rcnee_pkg_version}/ti-sgx-ti335x-modules-${repo_rcnee_pkg_version}_1${deb_codename}_armhf.deb
+	sudo wget --directory-prefix="${tempdir}/opt/sgx/" ${sgx_http}/t/ti-sgx-jacinto6evm-modules-${repo_rcnee_pkg_version}/ti-sgx-jacinto6evm-modules-${repo_rcnee_pkg_version}_1${deb_codename}_armhf.deb
+	wfile="${tempdir}/opt/sgx/status"
+	sudo sh -c "echo 'not_installed' >> ${wfile}"
 fi
 
 if [ -n "${early_chroot_script}" -a -r "${DIR}/target/chroot/${early_chroot_script}" ] ; then
@@ -1318,6 +1372,9 @@ cat > "${DIR}/cleanup_script.sh" <<-__EOF__
 		if [ -d /var/cache/ti-c6000-cgt-v8.1.x-installer/ ] ; then
 			rm -rf /var/cache/ti-c6000-cgt-v8.1.x-installer/ || true
 		fi
+		if [ -d /var/cache/ti-c6000-cgt-v8.2.x-installer/ ] ; then
+			rm -rf /var/cache/ti-c6000-cgt-v8.2.x-installer/ || true
+		fi
 		if [ -d /var/cache/ti-pru-cgt-installer/ ] ; then
 			rm -rf /var/cache/ti-pru-cgt-installer/ || true
 		fi
@@ -1355,6 +1412,7 @@ cat > "${DIR}/cleanup_script.sh" <<-__EOF__
 	cleanup
 
 	if [ -f /usr/bin/connmanctl ] ; then
+		rm -rf /etc/resolv.conf.bak || true
 		rm -rf /etc/resolv.conf || true
 		ln -s /run/connman/resolv.conf /etc/resolv.conf
 	fi

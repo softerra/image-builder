@@ -12,6 +12,7 @@ BeagleBoard.org BeagleBone (original bone/white):
 
 BeagleBoard.org or Element14 BeagleBone Black:
 
+      A5: [aa 55 33 ee 41 33 33 35  42 4e 4c 54 30 30 41 35 |.U3.A335BNLT00A5|]
      A5A: [aa 55 33 ee 41 33 33 35  42 4e 4c 54 30 41 35 41 |.U3.A335BNLT0A5A|]
      A5B: [aa 55 33 ee 41 33 33 35  42 4e 4c 54 30 41 35 42 |.U3.A335BNLT0A5B|]
      A5C: [aa 55 33 ee 41 33 33 35  42 4e 4c 54 30 41 35 43 |.U3.A335BNLT0A5C|]
@@ -26,7 +27,7 @@ BeagleBoard.org BeagleBone Blue:
 BeagleBoard.org BeagleBone Black Wireless:
 
       A5: [aa 55 33 ee 41 33 33 35  42 4e 4c 54 42 57 41 35 |.U3.A335BNLTBWA5|]
-      
+
 BeagleBoard.org PocketBeagle:
 
       A2: [aa 55 33 ee 41 33 33 35  50 42 47 4c 30 30 41 32 |.U3.A335PBGL00A2|]
@@ -87,30 +88,6 @@ BeagleBoard branch:
 
     git clone https://github.com/beagleboard/image-builder.git
 
-Images:
-
-    ./beagleboard.org_image.sh
-    http://beagleboard.org/source
-
-Flasher:
-
-    sudo ./setup_sdcard.sh --img-4gb BBB-eMMC-flasher-debian-7.X-201Y-MM-DD \
-    --dtb beaglebone --enable-systemd --bbb-flasher \
-    --bbb-old-bootloader-in-emmc
-
-    xz -z -8 -v BBB-eMMC-flasher-debian-7.X-201Y-MM-DD-4gb.img
-
-2GB, microSD:
-
-    sudo ./setup_sdcard.sh --img-2gb bone-debian-7.X-201Y-MM-DD --dtb beaglebone \
-    --enable-systemd --bbb-old-bootloader-in-emmc
-
-    xz -z -8 -v bone-debian-7.X-201Y-MM-DD-2gb.img
-
-Bug Tracker:
-
-    http://bugs.elinux.org/projects/debian-image-releases
-
 Release Process:
 
     bb.org-v201Y.MM.DD
@@ -130,27 +107,15 @@ eewiki.net: Debian Stable (armhf) minfs:
 
     ./RootStock-NG.sh -c eewiki_minfs_debian_stretch_armhf
 
-eewiki.net: Ubuntu Stable (armhf) minfs:
-
-    ./RootStock-NG.sh -c eewiki_minfs_ubuntu_xenial_armhf
-
-eewiki.net: Debian Stable (armel) barefs:
-
-    ./RootStock-NG.sh -c eewiki_bare_debian_jessie_armel
-
-eewiki.net: Debian Stable (armhf) barefs:
-
-    ./RootStock-NG.sh -c eewiki_bare_debian_jessie_armhf
-
 elinux.org: Debian Images:
 
-    ./RootStock-NG.sh -c rcn-ee_console_debian_jessie_armhf
     ./RootStock-NG.sh -c rcn-ee_console_debian_stretch_armhf
+    ./RootStock-NG.sh -c rcn-ee_console_debian_buster_armhf
     http://elinux.org/BeagleBoardDebian#Demo_Image
 
 elinux.org: Ubuntu Images:
 
-    ./RootStock-NG.sh -c rcn-ee_console_ubuntu_xenial_armhf
+    ./RootStock-NG.sh -c rcn-ee_console_ubuntu_bionic_armhf
     http://elinux.org/BeagleBoardUbuntu#Demo_Image
 
 Release Process:

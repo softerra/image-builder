@@ -80,8 +80,10 @@ if [ "$iotc_modules" != "" ]; then
 			make $iotc__MAKE_OPTS M=$PWD clean; \
 			make -j8 $iotc__MAKE_OPTS M=$PWD modules && \
 				make -j8 $iotc__MAKE_OPTS M=$PWD modules_install )
-		depmod -b ${tempdir} -A ${repo_rcnee_pkg_version}
 	done
+
+	# depmod on the final system
+	sudo chroot "${tempdir}" /bin/bash -c "depmod -A ${repo_rcnee_pkg_version}"
 
 # "$iotc_modules" != ""
 else

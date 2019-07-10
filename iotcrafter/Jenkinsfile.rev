@@ -1,11 +1,11 @@
 #!/usr/bin/env groovy
 
-def initialGitRevision = '7e36801' // config for 4.9 starts since this revision
+def initialGitRevision = '7e36801' // config for 4.9 starts since this revision and lasts till 1fab829
 def workerJob = 'oprog-img-bbb-build'
 
 def configList = [
-		'iotcrafter-debian-stretch-v4.9': [
-				'id': 'v4.9', 'branchId': 'stable', 'oldRelease': true ]
+		'iotcrafter-debian-stretch-v4.14': [
+				'id': 'v4.14', 'branchId': 'stable', 'oldRelease': false ]
 	]
 
 properties([disableConcurrentBuilds(),

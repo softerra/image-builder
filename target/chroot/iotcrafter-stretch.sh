@@ -22,7 +22,7 @@
 
 export LC_ALL=C
 
-u_boot_release="v2018.03"
+u_boot_release="v2019.01"
 u_boot_release_x15="ti-2017.01"
 
 #contains: rfs_username, release_date
@@ -61,6 +61,7 @@ git_clone () {
 	qemu_command="git clone ${git_repo} ${git_target_dir} --depth 1 || true"
 	qemu_warning
 	git clone ${git_repo} ${git_target_dir} --depth 1 || true
+	chown -R 1000:1000 ${git_target_dir}
 	sync
 	echo "${git_target_dir} : ${git_repo}" >> /opt/source/list.txt
 }
@@ -70,6 +71,7 @@ git_clone_branch () {
 	qemu_command="git clone -b ${git_branch} ${git_repo} ${git_target_dir} --depth 1 || true"
 	qemu_warning
 	git clone -b ${git_branch} ${git_repo} ${git_target_dir} --depth 1 || true
+	chown -R 1000:1000 ${git_target_dir}
 	sync
 	echo "${git_target_dir} : ${git_repo}" >> /opt/source/list.txt
 }
@@ -79,6 +81,7 @@ git_clone_full () {
 	qemu_command="git clone ${git_repo} ${git_target_dir} || true"
 	qemu_warning
 	git clone ${git_repo} ${git_target_dir} || true
+	chown -R 1000:1000 ${git_target_dir}
 	sync
 	echo "${git_target_dir} : ${git_repo}" >> /opt/source/list.txt
 }
@@ -238,24 +241,24 @@ install_git_repos () {
 		patch -p1 < /tmp/nginx.patch
 	fi
 
-	git_repo="https://github.com/prpplague/Userspace-Arduino"
-	git_target_dir="/opt/source/Userspace-Arduino"
-	git_clone
+	#git_repo="https://github.com/prpplague/Userspace-Arduino"
+	#git_target_dir="/opt/source/Userspace-Arduino"
+	#git_clone
 
 	git_repo="https://github.com/strahlex/BBIOConfig.git"
 	git_target_dir="/opt/source/BBIOConfig"
 	git_clone
 
-	git_repo="https://github.com/prpplague/fb-test-app.git"
-	git_target_dir="/opt/source/fb-test-app"
-	git_clone
-	if [ -f ${git_target_dir}/.git/config ] ; then
-		cd ${git_target_dir}/
-		if [ -f /usr/bin/make ] ; then
-			make
-		fi
-		cd /
-	fi
+	#git_repo="https://github.com/prpplague/fb-test-app.git"
+	#git_target_dir="/opt/source/fb-test-app"
+	#git_clone
+	#if [ -f ${git_target_dir}/.git/config ] ; then
+	#	cd ${git_target_dir}/
+	#	if [ -f /usr/bin/make ] ; then
+	#		make
+	#	fi
+	#	cd /
+	#fi
 
 	#am335x-pru-package
 	if [ -f /usr/include/prussdrv.h ] ; then
@@ -271,14 +274,14 @@ install_git_repos () {
 		fi
 	fi
 
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
-	git_target_dir="/opt/source/dtb-4.4-ti"
-	git_branch="4.4-ti"
+	git_repo="https://github.com/rogerq/pru-software-support-package"
+	git_target_dir="/opt/source/rogerq-mainline-pru-software-support-package"
+	git_branch="upstream/pruss"
 	git_clone_branch
 
 	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
-	git_target_dir="/opt/source/dtb-4.9-ti"
-	git_branch="4.9-ti"
+	git_target_dir="/opt/source/dtb-4.4-ti"
+	git_branch="4.4-ti"
 	git_clone_branch
 
 	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
@@ -286,16 +289,17 @@ install_git_repos () {
 	git_branch="4.14-ti"
 	git_clone_branch
 
+	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
+	git_target_dir="/opt/source/dtb-4.19-ti"
+	git_branch="4.19-ti"
+	git_clone_branch
+
 	git_repo="https://github.com/beagleboard/bb.org-overlays"
 	git_target_dir="/opt/source/bb.org-overlays"
 	git_clone
 
-	git_repo="https://github.com/ungureanuvladvictor/BBBlfs"
-	git_target_dir="/opt/source/BBBlfs"
-	git_clone
-
-	git_repo="https://github.com/StrawsonDesign/Robotics_Cape_Installer"
-	git_target_dir="/opt/source/Robotics_Cape_Installer"
+	git_repo="https://github.com/StrawsonDesign/librobotcontrol"
+	git_target_dir="/opt/source/librobotcontrol"
 	git_clone
 
 	git_repo="https://github.com/mcdeoliveira/rcpy"
@@ -321,25 +325,6 @@ install_git_repos () {
 	git_repo="https://github.com/mvduin/py-uio"
 	git_target_dir="/opt/source/py-uio"
 	git_clone
-
-	#beagle-tester
-	git_repo="https://github.com/jadonk/beagle-tester"
-	git_target_dir="/opt/source/beagle-tester"
-	git_clone
-	if [ -f ${git_target_dir}/.git/config ] ; then
-		if [ -f /usr/lib/libroboticscape.so ] ; then
-			cd ${git_target_dir}/
-			if [ -f /usr/bin/make ] ; then
-				make
-				make install || true
-				if [ "x${image_type_mod}" = "x-bbgw" ]; then
-					if [ ! "x${image_type}" = "xtester-2gb" ] ; then
-						systemctl disable beagle-tester.service || true
-					fi
-				fi
-			fi
-		fi
-	fi
 }
 
 workshop_stuff () {
@@ -413,7 +398,6 @@ npm config set unsafe-perm true
 npm install yarn -g
 npm i npm@latest -g
 
-
 # add own repo
 cat > /etc/apt/sources.list.d/iotcrafter.list <<EOF
 deb [arch=all,armhf] http://download.iotcrafter.com/iotc/bbb stretch main
@@ -426,6 +410,7 @@ apt-get -y update
 echo iotc iotc/cpuid string BBB | debconf-set-selections
 echo iotc iotc/kernvers string ${repo_rcnee_pkg_version} | debconf-set-selections
 echo iotc iotc/load-overlays boolean false | debconf-set-selections
+echo iotc iotc/uboot-overlays boolean true | debconf-set-selections
 
 apt-get -y install iotc-core iotc-ide
 dpkg-reconfigure -fnoninteractive -plow unattended-upgrades
@@ -439,10 +424,5 @@ sed -i 's/^\(iotc_init_version=\).*$/\1"'${IOTC_INIT_REV}'"/' /opt/iotc/bin/iotc
 chmod 755 /opt/iotc/bin/iotc_init.sh
 # force for now to use ifup for wifi (nevermind what is specified by the scirpt)
 sed -i 's/^\(IOTC_WLAN_FORCE_IFUP=\).*$/\11/' /opt/iotc/bin/iotc_init.sh
-
-# restore capemgr service
-if [ -f /lib/systemd/system/capemgr.service ] ; then
-	systemctl enable capemgr.service || true
-fi
 
 chown -R ${rfs_username}:${rfs_username} /home/${rfs_username}
