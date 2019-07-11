@@ -129,10 +129,28 @@ cat > ${DIR}/deploy/setup_sdcard_populate_after_hook <<-__EOF__
     echo "setup_sdcard_populate_after_hook: func stack: \${FUNCNAME[*]}"
     case "\${FUNCNAME[1]}" in
         populate_rootfs)
+            # Perform the same uEnv.txt editing as iotc-core's debian/postinst
+            # iotc-core could not do this because uEnv.txt is not ready at the stage of the package installation
+
+            # comment everything
+            # skip these: s/^uboot_overlay_pru=/#&/
+            sed -i 's/^uboot_overlay_addr[0-9]*=/#&/
+                    s/^dtb_overlay=/#&/
+                    s/^disable_uboot_overlay_/#&/
+                    s/^enable_uboot_cape_universal=/#&/
+                    s/^disable_uboot_overlay_addr[0-9]*=/#&/
+                   ' \${TEMPDIR}/disk/boot/uEnv.txt
+            # enable iotc overlays and othe roptions
+            # skip these: s/^#disable_uboot_overlay_emmc=.*$/disable_uboot_overlay_emmc=1/
+            sed -i 's/^#uboot_overlay_addr4=.*$/uboot_overlay_addr4=\/lib\/firmware\/BB-PWM-00A0.dtbo/
+                    s/^#uboot_overlay_addr5=.*$/uboot_overlay_addr5=\/lib\/firmware\/BB-W1-P8.19-00A0.dtbo/
+                    s/^#disable_uboot_overlay_video=.*$/disable_uboot_overlay_video=1/
+                    s/^#disable_uboot_overlay_audio=.*$/disable_uboot_overlay_audio=1/
+                   ' \${TEMPDIR}/disk/boot/uEnv.txt
+
+            # embed iotc_init.sh one time initialization
             sed -i 's/^cmdline=.*\$/& init=\/opt\/iotc\/bin\/iotc_init.sh/
-                    s/^#*uboot_overlay_addr4=.*/uboot_overlay_addr4=\/lib\/firmware\/BB-PWM-00A0.dtbo/
-                    s/^#*uboot_overlay_addr5=.*/uboot_overlay_addr5=\/lib\/firmware\/BB-W1-P8.19-00A0.dtbo/
-                    ' \${TEMPDIR}/disk/boot/uEnv.txt
+                   ' \${TEMPDIR}/disk/boot/uEnv.txt
             echo "/boot/uEnv.txt: init script defined, iotc overlays preset"
         ;;
     esac
