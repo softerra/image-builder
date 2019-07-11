@@ -1158,8 +1158,11 @@ populate_rootfs () {
 			pv "${DIR}/${ROOTFS}" | tar --numeric-owner --preserve-permissions -xf - -C ${TEMPDIR}/disk/
 		else
 			echo "pv: not installed, using tar verbose to show progress"
-			tar --numeric-owner --preserve-permissions --verbose -xf "${DIR}/${ROOTFS}" -C ${TEMPDIR}/disk/
+			# --verbose will produce a big output which may cause a failure "tar: write error" under Jenkins
+			#tar --numeric-owner --preserve-permissions --verbose -xf "${DIR}/${ROOTFS}" -C ${TEMPDIR}/disk/
+			tar --numeric-owner --preserve-permissions -xf "${DIR}/${ROOTFS}" -C ${TEMPDIR}/disk/
 		fi
+		echo "RC:$?"
 
 		echo "Transfer of data is Complete, now syncing data to disk..."
 		echo "Disk Size"
