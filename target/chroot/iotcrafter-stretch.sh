@@ -393,6 +393,13 @@ fi
 other_source_links
 #unsecure_root
 #
+
+# back apt-daily* stuff
+systemctl enable apt-daily.service
+systemctl enable apt-daily.timer
+systemctl enable apt-daily-upgrade.service
+systemctl enable apt-daily-upgrade.timer
+
 # install it here when almost whole system is set up (debian user exists)
 npm config set unsafe-perm true
 npm install yarn -g
