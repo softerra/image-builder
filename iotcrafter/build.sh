@@ -107,6 +107,8 @@ generate_img () {
                 if [ -d \${base_rootfs}/ ] ; then
                         cp -f setup_sdcard_*_hook \${base_rootfs}/
                         cd \${base_rootfs}/
+                        # force final tar for rootfs to log into a file in the directory
+                        sed -i 's/^[[:space:]]*tar.*--verbose.*\$/& >> setup_sdcard_tar.log/' ./setup_sdcard.sh
                         sudo ./setup_sdcard.sh \${options}
                         mv *.img ../ || true
                         mv *.job.txt ../ || true
