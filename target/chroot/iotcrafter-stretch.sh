@@ -393,6 +393,23 @@ fi
 other_source_links
 #unsecure_root
 #
+
+## disable connman, use ifup instead
+## the rest is assumed to be configured by iotc_init.sh script at first start
+#systemctl disable connman
+## disable SoftAp (if enabled, connmand is started for the first time when running
+## /usr/bin/bb-wl18xx-tether which restarts it
+#sed -i 's/^\(TETHER_ENABLED\)=.*$/\1=no/' /etc/default/bb-wl18xx
+
+#disable apache2
+systemctl disable apache2
+
+# back apt-daily* stuff
+systemctl enable apt-daily.service
+systemctl enable apt-daily.timer
+systemctl enable apt-daily-upgrade.service
+systemctl enable apt-daily-upgrade.timer
+
 # install it here when almost whole system is set up (debian user exists)
 npm config set unsafe-perm true
 npm install yarn -g
@@ -418,11 +435,12 @@ dpkg-reconfigure -fnoninteractive -plow unattended-upgrades
 # remove all iotc's settings
 echo PURGE | debconf-communicate iotc
 
-IOTC_INIT_REV=b8b4e41ada14892ee2f90a0419b14cb159cfe4cf
+IOTC_INIT_REV=065b497979c9b5fe028d6523678c7cfe6206b8a3
 wget -P /opt/iotc/bin/ https://raw.githubusercontent.com/softerra/iotc_scripts/${IOTC_INIT_REV}/board/iotc_init.sh
-sed -i 's/^\(iotc_init_version=\).*$/\1"'${IOTC_INIT_REV}'"/' /opt/iotc/bin/iotc_init.sh
+sed -i 's/^\(iotc_init_version\)=.*$/\1="'${IOTC_INIT_REV}'"/' /opt/iotc/bin/iotc_init.sh
 chmod 755 /opt/iotc/bin/iotc_init.sh
-# force for now to use ifup for wifi (nevermind what is specified by the scirpt)
-sed -i 's/^\(IOTC_WLAN_FORCE_IFUP=\).*$/\11/' /opt/iotc/bin/iotc_init.sh
+# set iotc_init options
+# - don't force ifup for wlan
+sed -i 's/^\(IOTC_WLAN_FORCE_IFUP\)=.*$/\1=0/' /opt/iotc/bin/iotc_init.sh
 
 chown -R ${rfs_username}:${rfs_username} /home/${rfs_username}

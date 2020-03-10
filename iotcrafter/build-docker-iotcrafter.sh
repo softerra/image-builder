@@ -53,7 +53,8 @@ fi
 
 if [ -z "${IMG_CONF}" ]; then
 	echo "IMG_CONF not set in 'config', build default" 1>&2
-	IMG_CONF=iotcrafter-debian-stretch-v4.9
+	#IMG_CONF=iotcrafter-debian-stretch-v4.9
+	IMG_CONF=iotcrafter-debian-stretch-v4.14
 fi
 
 CONTAINER_NAME="${BUILD_SYS}_${DOCKER_CONTAINER_SUFFIX}_work"
