@@ -7,6 +7,9 @@ echo "Started: $(date)"
 time=$(date +%Y-%m-%d)
 DIR="$PWD"
 
+# a proxy can be used
+# export apt_proxy=proxy.gfnd.rcn-ee.org:3142/
+
 if [ -f config ]; then
 	source config
 fi
@@ -45,7 +48,7 @@ echo "Rootfs Done: $(date)"
 # Build image
 
 debian_iotcrafter=$(cat ./latest_version)
-archive="xz -z -8 -v"
+archive="xz -T0 -z -8 -v"
 # we don't enable cape-universal
 beaglebone="--dtb beaglebone --hostname beaglebone --enable-uboot-cape-overlays --enable-uboot-disable-video --enable-uboot-disable-audio"
 

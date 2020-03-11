@@ -22,8 +22,8 @@
 
 export LC_ALL=C
 
-u_boot_release="v2019.01"
-u_boot_release_x15="ti-2017.01"
+u_boot_release="v2019.04"
+u_boot_release_x15="v2019.07-rc4"
 
 #contains: rfs_username, release_date
 if [ -f /etc/rcn-ee.conf ] ; then
@@ -200,6 +200,7 @@ install_git_repos () {
 			if [ -f /usr/bin/python3 ] ; then
 				python3 setup.py install || true
 			fi
+			git reset HEAD --hard || true
 		fi
 	fi
 
@@ -224,41 +225,14 @@ install_git_repos () {
 	if [ -f /var/www/html/index.nginx-debian.html ] ; then
 		rm -rf /var/www/html/index.nginx-debian.html || true
 
-		echo "diff --git a/etc/nginx/sites-available/default b/etc/nginx/sites-available/default" > /tmp/nginx.patch
-		echo "index c841ceb..4f977d8 100644" >> /tmp/nginx.patch
-		echo "--- a/etc/nginx/sites-available/default" >> /tmp/nginx.patch
-		echo "+++ b/etc/nginx/sites-available/default" >> /tmp/nginx.patch
-		echo "@@ -49,6 +49,7 @@ server {" >> /tmp/nginx.patch
-		echo -e " \t\t# First attempt to serve request as file, then" >> /tmp/nginx.patch
-		echo -e " \t\t# as directory, then fall back to displaying a 404." >> /tmp/nginx.patch
-		echo -e " \t\ttry_files \$uri \$uri/ =404;" >> /tmp/nginx.patch
-		echo -e "+\t\tautoindex on;" >> /tmp/nginx.patch
-		echo -e " \t}" >> /tmp/nginx.patch
-		echo " " >> /tmp/nginx.patch
-		echo -e " \t# pass PHP scripts to FastCGI server" >> /tmp/nginx.patch
-
-		cd /
-		patch -p1 < /tmp/nginx.patch
+		if [ -d /opt/scripts/distro/buster/nginx/ ] ; then
+			cp -v /opt/scripts/distro/buster/nginx/default /etc/nginx/sites-available/default
+		fi
 	fi
-
-	#git_repo="https://github.com/prpplague/Userspace-Arduino"
-	#git_target_dir="/opt/source/Userspace-Arduino"
-	#git_clone
 
 	git_repo="https://github.com/strahlex/BBIOConfig.git"
 	git_target_dir="/opt/source/BBIOConfig"
 	git_clone
-
-	#git_repo="https://github.com/prpplague/fb-test-app.git"
-	#git_target_dir="/opt/source/fb-test-app"
-	#git_clone
-	#if [ -f ${git_target_dir}/.git/config ] ; then
-	#	cd ${git_target_dir}/
-	#	if [ -f /usr/bin/make ] ; then
-	#		make
-	#	fi
-	#	cd /
-	#fi
 
 	#am335x-pru-package
 	if [ -f /usr/include/prussdrv.h ] ; then
@@ -274,51 +248,48 @@ install_git_repos () {
 		fi
 	fi
 
-	git_repo="https://github.com/rogerq/pru-software-support-package"
-	git_target_dir="/opt/source/rogerq-mainline-pru-software-support-package"
-	git_branch="upstream/pruss"
-	git_clone_branch
-
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
-	git_target_dir="/opt/source/dtb-4.4-ti"
-	git_branch="4.4-ti"
-	git_clone_branch
-
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	git_target_dir="/opt/source/dtb-4.14-ti"
-	git_branch="4.14-ti"
+	git_branch="v4.14.x-ti"
 	git_clone_branch
 
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	git_target_dir="/opt/source/dtb-4.19-ti"
-	git_branch="4.19-ti"
+	git_branch="v4.19.x-ti"
+	git_clone_branch
+
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	git_target_dir="/opt/source/dtb-5.4-ti"
+	git_branch="v5.4.x-ti"
 	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/bb.org-overlays"
 	git_target_dir="/opt/source/bb.org-overlays"
 	git_clone
 
-	git_repo="https://github.com/StrawsonDesign/librobotcontrol"
-	git_target_dir="/opt/source/librobotcontrol"
-	git_clone
+	if [ -f /usr/lib/librobotcontrol.so ] ; then
+		git_repo="https://github.com/StrawsonDesign/librobotcontrol"
+		git_target_dir="/opt/source/librobotcontrol"
+		git_clone
 
-	git_repo="https://github.com/mcdeoliveira/rcpy"
-	git_target_dir="/opt/source/rcpy"
-	git_clone
-	if [ -f ${git_target_dir}/.git/config ] ; then
-		cd ${git_target_dir}/
-		if [ -f /usr/bin/python3 ] ; then
-			/usr/bin/python3 setup.py install
+		git_repo="https://github.com/mcdeoliveira/rcpy"
+		git_target_dir="/opt/source/rcpy"
+		git_clone
+		if [ -f ${git_target_dir}/.git/config ] ; then
+			cd ${git_target_dir}/
+			if [ -f /usr/bin/python3 ] ; then
+				/usr/bin/python3 setup.py install
+			fi
 		fi
-	fi
 
-	git_repo="https://github.com/mcdeoliveira/pyctrl"
-	git_target_dir="/opt/source/pyctrl"
-	git_clone
-	if [ -f ${git_target_dir}/.git/config ] ; then
-		cd ${git_target_dir}/
-		if [ -f /usr/bin/python3 ] ; then
-			/usr/bin/python3 setup.py install
+		git_repo="https://github.com/mcdeoliveira/pyctrl"
+		git_target_dir="/opt/source/pyctrl"
+		git_clone
+		if [ -f ${git_target_dir}/.git/config ] ; then
+			cd ${git_target_dir}/
+			if [ -f /usr/bin/python3 ] ; then
+				/usr/bin/python3 setup.py install
+			fi
 		fi
 	fi
 
@@ -348,7 +319,7 @@ other_source_links () {
 	wget --directory-prefix="/opt/source/u-boot_${u_boot_release}/" ${rcn_https}/${u_boot_release}/0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
 	wget --directory-prefix="/opt/source/u-boot_${u_boot_release}/" ${rcn_https}/${u_boot_release}/0002-U-Boot-BeagleBone-Cape-Manager.patch
 	mkdir -p /opt/source/u-boot_${u_boot_release_x15}/
-	wget --directory-prefix="/opt/source/u-boot_${u_boot_release_x15}/" ${rcn_https}/${u_boot_release_x15}/0001-beagle_x15-uEnv.txt-bootz-n-fixes.patch
+	wget --directory-prefix="/opt/source/u-boot_${u_boot_release_x15}/" ${rcn_https}/${u_boot_release_x15}/0001-am57xx_evm-fixes.patch
 	rm /home/${rfs_username}/.wget-hsts || true
 
 	echo "u-boot_${u_boot_release} : /opt/source/u-boot_${u_boot_release}" >> /opt/source/list.txt
@@ -401,8 +372,7 @@ other_source_links
 ## /usr/bin/bb-wl18xx-tether which restarts it
 #sed -i 's/^\(TETHER_ENABLED\)=.*$/\1=no/' /etc/default/bb-wl18xx
 
-#disable apache2
-systemctl disable apache2
+#systemctl disable apache2
 
 # back apt-daily* stuff
 systemctl enable apt-daily.service
