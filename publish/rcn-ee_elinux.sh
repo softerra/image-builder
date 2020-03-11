@@ -1,10 +1,12 @@
 #!/bin/bash -e
 
+OIB_USER=${OIB_USER:-1000}
+
 time=$(date +%Y-%m-%d)
 mirror_dir="/var/www/html/rcn-ee.us/rootfs/"
 DIR="$PWD"
 
-export apt_proxy=apt-proxy:3142/
+export apt_proxy=proxy.gfnd.rcn-ee.org:3142/
 
 if [ -d ./deploy ] ; then
 	sudo rm -rf ./deploy || true
@@ -18,9 +20,9 @@ else
 	mkdir -p ${DIR}/deploy/ || true
 fi
 
- debian_stable="debian-9.8-console-armhf-${time}"
+ debian_stable="debian-9.12-console-armhf-${time}"
 debian_testing="debian-buster-console-armhf-${time}"
- ubuntu_stable="ubuntu-18.04.2-console-armhf-${time}"
+ ubuntu_stable="ubuntu-18.04.3-console-armhf-${time}"
 #ubuntu_testing="ubuntu-bionic-console-armhf-${time}"
 
 xz_img="xz -z -8"
@@ -36,7 +38,7 @@ cat > ${DIR}/deploy/gift_wrap_final_images.sh <<-__EOF__
 #!/bin/bash
 
 wait_till_Xgb_free () {
-        memory=4096
+        memory=16384
         free_memory=\$(free --mega | grep Mem | awk '{print \$7}')
         until [ "\$free_memory" -gt "\$memory" ] ; do
                 free_memory=\$(free --mega | grep Mem | awk '{print \$7}')
@@ -99,10 +101,6 @@ copy_img_to_mirror () {
                         if [ ! -f ${mirror_dir}/${time}/\${blend}/\${wfile}.img.zx ] ; then
                                 mv -v \${wfile}.img ${mirror_dir}/${time}/\${blend}/
                                 sync
-                                if [ -f \${wfile}.img.xz.job.txt ] ; then
-                                        mv -v \${wfile}.img.xz.job.txt ${mirror_dir}/${time}/\${blend}/
-                                        sync
-                                fi
                                 cd ${mirror_dir}/${time}/\${blend}/
                                 ${xz_img} \${wfile}.img && sha256sum \${wfile}.img.xz > \${wfile}.img.xz.sha256sum &
                                 cd -
@@ -125,11 +123,10 @@ archive_img () {
 generate_img () {
         if [ -d \${base_rootfs}/ ] ; then
                 cd \${base_rootfs}/
+                echo "./setup_sdcard.sh \${options}"
                 sudo ./setup_sdcard.sh \${options}
                 sudo chown 1000:1000 *.img || true
-                sudo chown 1000:1000 *.job.txt || true
                 mv *.img ../ || true
-                mv *.job.txt ../ || true
                 cd ..
         fi
 }
@@ -194,19 +191,28 @@ if [ ! -d /var/www/html/farm/images/ ] ; then
 	fi
 
 	if [ -d /mnt/farm/images/ ] ; then
-		mkdir -p /mnt/farm/images/${image_prefix}-${time}/ || true
+		if [ ! -d /mnt/farm/images/${image_prefix}-${time}/ ] ; then
+			echo "mkdir: /mnt/farm/images/${image_prefix}-${time}/"
+			mkdir -p /mnt/farm/images/${image_prefix}-${time}/ || true
+		fi
+
 		echo "Copying: *.tar to server: images/${image_prefix}-${time}/"
 		cp -v ${DIR}/deploy/*.tar /mnt/farm/images/${image_prefix}-${time}/ || true
 		cp -v ${DIR}/deploy/gift_wrap_final_images.sh /mnt/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
-		chmod +x /mnt/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
+		sudo chmod +x /mnt/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
+		sudo chown -R ${OIB_USER}:${OIB_USER} /var/www/html/farm/images/${image_prefix}-${time}/ || true
 	fi
 fi
 
 #x86:
 if [ -d /var/www/html/farm/images/ ] ; then
 	mkdir -p /var/www/html/farm/images/${image_prefix}-${time}/ || true
+
 	echo "Copying: *.tar to server: images/${image_prefix}-${time}/"
 	cp -v ${DIR}/deploy/gift_wrap_final_images.sh /var/www/html/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
-	chmod +x /var/www/html/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
-	sudo chown -R apt-cacher-ng:apt-cacher-ng /var/www/html/farm/images/${image_prefix}-${time}/ || true
+
+	sudo chown -R ${OIB_USER}:${OIB_USER} /var/www/html/farm/images/${image_prefix}-${time}/ || true
+	sudo chmod +x /var/www/html/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
+	sudo chmod g+wr /var/www/html/farm/images/${image_prefix}-${time}/ || true
+	ls -lha /var/www/html/farm/images/${image_prefix}-${time}/
 fi

@@ -330,16 +330,12 @@ sudo mv /tmp/02-no-languages "${tempdir}/etc/apt/apt.conf.d/02-no-languages"
 if [ "x${deb_distribution}" = "xdebian" ] ; then
 	#apt: /var/lib/apt/lists/, store compressed only
 	case "${deb_codename}" in
-	jessie)
-		echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /tmp/02compress-indexes
-		sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
-		;;
-	stretch)
+	stretch|buster)
 		echo 'Acquire::GzipIndexes "true"; APT::Compressor::xz::Cost "40";' > /tmp/02compress-indexes
 		sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
 		;;
-	buster|sid)
-		###FIXME: close to release switch to ^ xz, right now buster is slow on apt...
+	sid)
+		###FIXME: close to release switch to ^ xz, right now <next> is slow on apt...
 		echo 'Acquire::GzipIndexes "true"; APT::Compressor::gzip::Cost "40";' > /tmp/02compress-indexes
 		sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
 		;;
@@ -366,13 +362,10 @@ echo "" >> ${wfile}
 
 #https://wiki.debian.org/StableUpdates
 case "${deb_codename}" in
-buster|sid)
+sid)
 	echo "#deb http://${deb_mirror} ${deb_codename}-updates ${deb_components}" >> ${wfile}
 	echo "##deb-src http://${deb_mirror} ${deb_codename}-updates ${deb_components}" >> ${wfile}
 	echo "" >> ${wfile}
-	;;
-jessie)
-	echo "###For Debian 8 Jessie, jessie-updates no longer exists as this suite no longer receives updates since 2018-05-17." >> ${wfile}
 	;;
 *)
 	echo "deb http://${deb_mirror} ${deb_codename}-updates ${deb_components}" >> ${wfile}
@@ -383,12 +376,12 @@ esac
 
 #https://wiki.debian.org/LTS/Using
 case "${deb_codename}" in
-jessie|stretch)
+stretch|buster)
 	echo "deb http://deb.debian.org/debian-security ${deb_codename}/updates ${deb_components}" >> ${wfile}
 	echo "#deb-src http://deb.debian.org/debian-security ${deb_codename}/updates ${deb_components}" >> ${wfile}
 	echo "" >> ${wfile}
 	;;
-buster|sid)
+sid)
 	echo "#deb http://deb.debian.org/debian-security ${deb_codename}/updates ${deb_components}" >> ${wfile}
 	echo "##deb-src http://deb.debian.org/debian-security ${deb_codename}/updates ${deb_components}" >> ${wfile}
 	echo "" >> ${wfile}
@@ -398,7 +391,7 @@ esac
 #https://wiki.debian.org/Backports
 if [ "x${chroot_enable_debian_backports}" = "xenable" ] ; then
 	case "${deb_codename}" in
-	jessie|stretch)
+	stretch|buster)
 		echo "deb http://deb.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
 		echo "#deb-src http://deb.debian.org/debian ${deb_codename}-backports ${deb_components}" >> ${wfile}
 		echo "" >> ${wfile}
@@ -497,7 +490,7 @@ if [ "x${deb_arch}" = "xarmhf" ] ; then
 	case "${deb_distribution}" in
 	debian)
 		case "${deb_codename}" in
-		jessie|stretch|buster)
+		stretch|buster)
 			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
 			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
 			sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
@@ -507,7 +500,7 @@ if [ "x${deb_arch}" = "xarmhf" ] ; then
 		;;
 	ubuntu)
 		case "${deb_codename}" in
-		bionic)
+		bionic|focal)
 			#while bb-customizations installes "generic-board-startup.service" other boards/configs could use this default.
 			sudo cp "${OIB_DIR}/target/init_scripts/systemd-generic-board-startup.service" "${tempdir}/lib/systemd/system/generic-board-startup.service"
 			sudo chown root:root "${tempdir}/lib/systemd/system/generic-board-startup.service"
@@ -742,7 +735,14 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 			apt-get -y install libpruio-modules-${repo_rcnee_pkg_version} || true
 			apt-get -y install rtl8723bu-modules-${repo_rcnee_pkg_version} || true
 			apt-get -y install rtl8821cu-modules-${repo_rcnee_pkg_version} || true
-			apt-get -y install ti-cmem-modules-${repo_rcnee_pkg_version} || true
+			apt-get -y install seeed-modules-${repo_rcnee_pkg_version} || true
+
+			if [ ! "x${repo_rcnee_cmem_version}" = "x" ] ; then
+				apt-get -y install ti-cmem-${repo_rcnee_cmem_version}-modules-${repo_rcnee_pkg_version} || true
+			else
+				apt-get -y install ti-cmem-modules-${repo_rcnee_pkg_version} || true
+			fi
+
 			depmod -a ${repo_rcnee_pkg_version}
 			update-initramfs -u -k ${repo_rcnee_pkg_version}
 		fi
@@ -876,7 +876,9 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		groupadd -r admin || true
 		groupadd -r spi || true
 
+		cat /etc/group | grep ^iio || groupadd -r iio || true
 		cat /etc/group | grep ^i2c || groupadd -r i2c || true
+		cat /etc/group | grep ^docker || groupadd -r docker || true
 		cat /etc/group | grep ^kmem || groupadd -r kmem || true
 		cat /etc/group | grep ^netdev || groupadd -r netdev || true
 		cat /etc/group | grep ^systemd-journal || groupadd -r systemd-journal || true
@@ -888,6 +890,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		cat /etc/group | grep ^gpio || groupadd -r gpio || true
 		cat /etc/group | grep ^pwm || groupadd -r pwm || true
 		cat /etc/group | grep ^eqep || groupadd -r eqep || true
+		cat /etc/group | grep ^remoteproc || groupadd -r remoteproc || true
 
 		echo "KERNEL==\"hidraw*\", GROUP=\"plugdev\", MODE=\"0660\"" > /etc/udev/rules.d/50-hidraw.rules
 		echo "KERNEL==\"spidev*\", GROUP=\"spi\", MODE=\"0660\"" > /etc/udev/rules.d/50-spi.rules
@@ -898,7 +901,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		echo "SUBSYSTEM==\"cmem\", GROUP=\"tisdk\", MODE=\"0660\"" > /etc/udev/rules.d/tisdk.rules
 		echo "SUBSYSTEM==\"rpmsg_rpc\", GROUP=\"tisdk\", MODE=\"0660\"" >> /etc/udev/rules.d/tisdk.rules
 
-		default_groups="admin,adm,cloud9ide,dialout,gpio,pwm,eqep,i2c,kmem,spi,cdrom,floppy,audio,dip,video,netdev,plugdev,bluetooth,users,systemd-journal,tisdk,weston-launch,xenomai"
+		default_groups="admin,adm,cloud9ide,dialout,docker,gpio,pwm,eqep,iio,i2c,remoteproc,kmem,spi,cdrom,floppy,audio,dip,video,netdev,plugdev,bluetooth,users,systemd-journal,tisdk,weston-launch,xenomai"
 
 		pkg="sudo"
 		dpkg_check
@@ -928,6 +931,14 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 		mkdir -p /home/${rfs_username}/bin
 		chown ${rfs_username}:${rfs_username} /home/${rfs_username}/bin
+
+		if [ ! "x${rfs_desktop_icon}" = "x" ] ; then
+			if [ -f /usr/share/applications/${rfs_desktop_icon} ] ; then
+				mkdir -p /home/${rfs_username}/Desktop
+				cp -v /usr/share/applications/${rfs_desktop_icon} home/${rfs_username}/Desktop/
+				chown -R ${rfs_username}:${rfs_username} /home/${rfs_username}/Desktop/
+			fi
+		fi
 
 		case "\${distro}" in
 		Debian)
@@ -1093,6 +1104,10 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		if [ -f /lib/systemd/system/hostapd.service ] ; then
 			systemctl disable hostapd.service || true
 		fi
+
+		if [ -f /usr/bin/docker ] ; then
+			sudo systemctl enable docker.service || true
+		fi
 	}
 
 	grub_tweaks () {
@@ -1167,6 +1182,9 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		#disable the message of the day (motd) welcome message
 		chmod -R 0644 /etc/update-motd.d/ || true
 	fi
+
+	echo "[global]" > /etc/pip.conf
+	echo "extra-index-url=https://www.piwheels.org/simple" >> /etc/pip.conf
 
 	if [ -f /etc/default/grub ] ; then
 		grub_tweaks
@@ -1360,9 +1378,6 @@ cat > "${DIR}/cleanup_script.sh" <<-__EOF__
 		apt-get clean
 		rm -rf /var/lib/apt/lists/*
 
-		if [ -d /var/cache/bb-node-red-installer ] ; then
-			rm -rf /var/cache/bb-node-red-installer|| true
-		fi
 		if [ -d /var/cache/c9-core-installer/ ] ; then
 			rm -rf /var/cache/c9-core-installer/ || true
 		fi
@@ -1470,7 +1485,11 @@ chroot_umount
 
 if [ "x${chroot_COPY_SETUP_SDCARD}" = "xenable" ] ; then
 	echo "Log: copying setup_sdcard.sh related files"
-	sudo cp "${DIR}/tools/setup_sdcard.sh" "${DIR}/deploy/${export_filename}/"
+        if [ "x${chroot_custom_setup_sdcard}" = "x" ] ; then
+                sudo cp "${DIR}/tools/setup_sdcard.sh" "${DIR}/deploy/${export_filename}/"
+        else
+                sudo cp "${DIR}/tools/${chroot_custom_setup_sdcard}" "${DIR}/deploy/${export_filename}"
+        fi
 	sudo mkdir -p "${DIR}/deploy/${export_filename}/hwpack/"
 	sudo cp "${DIR}"/tools/hwpack/*.conf "${DIR}/deploy/${export_filename}/hwpack/"
 

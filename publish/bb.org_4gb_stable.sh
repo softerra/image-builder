@@ -29,7 +29,6 @@ build_and_upload_image () {
 
 		if [ -f ${target_name}-${image_name}-${size}.img ] ; then
 			sudo chown buildbot.buildbot ${target_name}-${image_name}-${size}.img
-			sudo chown buildbot.buildbot ${target_name}-${image_name}-${size}.img.xz.job.txt
 
 			sync ; sync ; sleep 5
 
@@ -42,7 +41,6 @@ build_and_upload_image () {
 			ssh ${ssh_user} mkdir -p ${server_dir}
 			rsync -e ssh -av ./${target_name}-${image_name}-${size}.bmap ${ssh_user}:${server_dir}/
 			rsync -e ssh -av ./${target_name}-${image_name}-${size}.img.xz ${ssh_user}:${server_dir}/
-			rsync -e ssh -av ./${target_name}-${image_name}-${size}.img.xz.job.txt ${ssh_user}:${server_dir}/
 			rsync -e ssh -av ./${target_name}-${image_name}-${size}.img.xz.sha256sum ${ssh_user}:${server_dir}/
 
 			#cleanup:
@@ -60,45 +58,45 @@ keep_net_alive & KEEP_NET_ALIVE_PID=$!
 echo "pid: [${KEEP_NET_ALIVE_PID}]"
 
 # IoT BeagleBone image
-##Debian 8:
+##Debian 9:
 #image_name="${deb_distribution}-${release}-${image_type}-${deb_arch}-${time}"
-image_name="debian-8.11-iot-2gb-armhf-${time}"
-size="2gb"
-target_name="bone"
-options="--img-2gb ${target_name}-${image_name} --dtb beaglebone \
---hostname beaglebone --enable-cape-universal"
-config_name="bb.org-debian-jessie-iot-2gb-v4.4"
-build_and_upload_image
-
-# LXQT BeagleBone image
-##Debian 8:
-#image_name="${deb_distribution}-${release}-${image_type}-${deb_arch}-${time}"
-image_name="debian-8.11-lxqt-4gb-armhf-${time}"
+image_name="debian-9.12-iot-armhf-${time}"
 size="4gb"
 target_name="bone"
 options="--img-4gb ${target_name}-${image_name} --dtb beaglebone \
---hostname beaglebone --enable-cape-universal"
-config_name="bb.org-debian-jessie-lxqt-4gb-v4.4"
+--hostname beaglebone --enable-cape-universal --enable-uboot-pru-rproc-414ti"
+config_name="bb.org-debian-stretch-iot-v4.14"
+build_and_upload_image
+
+# LXQT BeagleBone image
+##Debian 9:
+#image_name="${deb_distribution}-${release}-${image_type}-${deb_arch}-${time}"
+image_name="debian-9.12-lxqt-armhf-${time}"
+size="4gb"
+target_name="bone"
+options="--img-4gb ${target_name}-${image_name} --dtb beaglebone \
+--hostname beaglebone --enable-cape-universal --enable-uboot-pru-rproc-414ti"
+config_name="bb.org-debian-stretch-lxqt-v4.14"
 build_and_upload_image
 
 # LXQT BeagleBoard-xM image
-##Debian 8:
+##Debian 9:
 #image_name="${deb_distribution}-${release}-${image_type}-${deb_arch}-${time}"
-image_name="debian-8.11-lxqt-xm-4gb-armhf-${time}"
+image_name="debian-9.12-lxqt-xm-armhf-${time}"
 size="4gb"
 target_name="bbxm"
 options="--img-4gb ${target_name}-${image_name} --dtb omap3-beagle-xm --rootfs_label rootfs --hostname beagleboard"
-config_name="bb.org-debian-jessie-lxqt-4gb-xm"
+config_name="bb.org-debian-stretch-lxqt-xm"
 build_and_upload_image
 
-# LXQT BeagleBoard-X15 image
-##Debian 8:
+# LXQT BeagleBoard-X15/BeagleBone-AI image
+##Debian 9:
 #image_name="${deb_distribution}-${release}-${image_type}-${deb_arch}-${time}"
-image_name="debian-8.11-lxqt-4gb-armhf-${time}"
-size="4gb"
+image_name="debian-9.12-lxqt-tidl-armhf-${time}"
+size="6gb"
 target_name="am57xx"
-options="--img-4gb ${target_name}-${image_name} --dtb am57xx-beagle-x15 --hostname beagleboard"
-config_name="bb.org-debian-jessie-lxqt-4gb-v4.4"
+options="--img-6gb ${target_name}-${image_name} --dtb am57xx-beagle-x15 --hostname beaglebone"
+config_name="bb.org-debian-stretch-lxqt-tidl-v4.14"
 build_and_upload_image
 
 [ -e /proc/$KEEP_NET_ALIVE_PID ] && sudo kill $KEEP_NET_ALIVE_PID

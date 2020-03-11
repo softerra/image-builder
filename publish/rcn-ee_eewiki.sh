@@ -1,10 +1,12 @@
 #!/bin/bash -e
 
+OIB_USER=${OIB_USER:-1000}
+
 time=$(date +%Y-%m-%d)
 mirror_dir="/var/www/html/rcn-ee.us/rootfs/eewiki"
 DIR="$PWD"
 
-export apt_proxy=apt-proxy:3142/
+export apt_proxy=proxy.gfnd.rcn-ee.org:3142/
 
 if [ -d ./deploy ] ; then
 	sudo rm -rf ./deploy || true
@@ -13,13 +15,16 @@ fi
 if [ ! -f jenkins.build ] ; then
 ./RootStock-NG.sh -c eewiki_minfs_debian_stretch_armel
 ./RootStock-NG.sh -c eewiki_minfs_debian_stretch_armhf
+./RootStock-NG.sh -c eewiki_minfs_debian_buster_armel
+./RootStock-NG.sh -c eewiki_minfs_debian_buster_armhf
 ./RootStock-NG.sh -c eewiki_minfs_ubuntu_bionic_armhf
 else
 	mkdir -p ${DIR}/deploy/ || true
 fi
 
-debian_stable="debian-9.8"
-ubuntu_stable="ubuntu-18.04.2"
+debian_stretch="debian-9.12"
+debian_buster="debian-10.3"
+ubuntu_stable="ubuntu-18.04.3"
 
 xz_img="xz -z -8"
 xz_tar="xz -T2 -z -8"
@@ -44,8 +49,11 @@ copy_base_rootfs_to_mirror () {
 }
 
 blend=minfs
-base_rootfs="${debian_stable}-minimal-armel-${time}" ; copy_base_rootfs_to_mirror
-base_rootfs="${debian_stable}-minimal-armhf-${time}" ; copy_base_rootfs_to_mirror
+base_rootfs="${debian_stretch}-minimal-armel-${time}" ; copy_base_rootfs_to_mirror
+base_rootfs="${debian_stretch}-minimal-armhf-${time}" ; copy_base_rootfs_to_mirror
+
+base_rootfs="${debian_buster}-minimal-armel-${time}" ; copy_base_rootfs_to_mirror
+base_rootfs="${debian_buster}-minimal-armhf-${time}" ; copy_base_rootfs_to_mirror
 
 base_rootfs="${ubuntu_stable}-minimal-armhf-${time}" ; copy_base_rootfs_to_mirror
 
@@ -62,19 +70,28 @@ if [ ! -d /var/www/html/farm/images/ ] ; then
 	fi
 
 	if [ -d /mnt/farm/images/ ] ; then
-		mkdir -p /mnt/farm/images/${image_prefix}-${time}/ || true
+		if [ ! -d /mnt/farm/images/${image_prefix}-${time}/ ] ; then
+			echo "mkdir: /mnt/farm/images/${image_prefix}-${time}/"
+			mkdir -p /mnt/farm/images/${image_prefix}-${time}/ || true
+		fi
+
 		echo "Copying: *.tar to server: images/${image_prefix}-${time}/"
 		cp -v ${DIR}/deploy/*.tar /mnt/farm/images/${image_prefix}-${time}/ || true
 		cp -v ${DIR}/deploy/gift_wrap_final_images.sh /mnt/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
-		chmod +x /mnt/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
+		sudo chmod +x /mnt/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
+		sudo chown -R ${OIB_USER}:${OIB_USER} /var/www/html/farm/images/${image_prefix}-${time}/ || true
 	fi
 fi
 
 #x86:
 if [ -d /var/www/html/farm/images/ ] ; then
 	mkdir -p /var/www/html/farm/images/${image_prefix}-${time}/ || true
+
 	echo "Copying: *.tar to server: images/${image_prefix}-${time}/"
 	cp -v ${DIR}/deploy/gift_wrap_final_images.sh /var/www/html/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
-	chmod +x /var/www/html/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
-	sudo chown -R apt-cacher-ng:apt-cacher-ng /var/www/html/farm/images/${image_prefix}-${time}/ || true
+
+	sudo chown -R ${OIB_USER}:${OIB_USER} /var/www/html/farm/images/${image_prefix}-${time}/ || true
+	sudo chmod +x /var/www/html/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
+	sudo chmod g+wr /var/www/html/farm/images/${image_prefix}-${time}/ || true
+	ls -lha /var/www/html/farm/images/${image_prefix}-${time}/
 fi

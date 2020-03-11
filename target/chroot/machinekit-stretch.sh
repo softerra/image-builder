@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2014-2018 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2014-2019 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,8 +22,8 @@
 
 export LC_ALL=C
 
-u_boot_release="v2019.01"
-u_boot_release_x15="ti-2017.01"
+u_boot_release="v2019.04"
+u_boot_release_x15="v2019.07-rc4"
 
 #contains: rfs_username, release_date
 if [ -f /etc/rcn-ee.conf ] ; then
@@ -257,24 +257,9 @@ install_git_repos () {
 		patch -p1 < /tmp/nginx.patch
 	fi
 
-	git_repo="https://github.com/prpplague/Userspace-Arduino"
-	git_target_dir="/opt/source/Userspace-Arduino"
-	git_clone
-
 	git_repo="https://github.com/strahlex/BBIOConfig.git"
 	git_target_dir="/opt/source/BBIOConfig"
 	git_clone
-
-	git_repo="https://github.com/prpplague/fb-test-app.git"
-	git_target_dir="/opt/source/fb-test-app"
-	git_clone
-	if [ -f ${git_target_dir}/.git/config ] ; then
-		cd ${git_target_dir}/
-		if [ -f /usr/bin/make ] ; then
-			make
-		fi
-		cd /
-	fi
 
 	#am335x-pru-package
 	if [ -f /usr/include/prussdrv.h ] ; then
@@ -290,19 +275,19 @@ install_git_repos () {
 		fi
 	fi
 
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
-	git_target_dir="/opt/source/dtb-4.4-ti"
-	git_branch="4.4-ti"
-	git_clone_branch
-
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	git_target_dir="/opt/source/dtb-4.14-ti"
-	git_branch="4.14-ti"
+	git_branch="v4.14.x-ti"
 	git_clone_branch
 
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	git_target_dir="/opt/source/dtb-4.19-ti"
-	git_branch="4.19-ti"
+	git_branch="v4.19.x-ti"
+	git_clone_branch
+
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	git_target_dir="/opt/source/dtb-5.4-ti"
+	git_branch="v5.4.x-ti"
 	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/bb.org-overlays"
@@ -326,7 +311,7 @@ other_source_links () {
 	wget --directory-prefix="/opt/source/u-boot_${u_boot_release}/" ${rcn_https}/${u_boot_release}/0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
 	wget --directory-prefix="/opt/source/u-boot_${u_boot_release}/" ${rcn_https}/${u_boot_release}/0002-U-Boot-BeagleBone-Cape-Manager.patch
 	mkdir -p /opt/source/u-boot_${u_boot_release_x15}/
-	wget --directory-prefix="/opt/source/u-boot_${u_boot_release_x15}/" ${rcn_https}/${u_boot_release_x15}/0001-beagle_x15-uEnv.txt-bootz-n-fixes.patch
+	wget --directory-prefix="/opt/source/u-boot_${u_boot_release_x15}/" ${rcn_https}/${u_boot_release_x15}/0001-am57xx_evm-fixes.patch
 	rm /home/${rfs_username}/.wget-hsts || true
 
 	echo "u-boot_${u_boot_release} : /opt/source/u-boot_${u_boot_release}" >> /opt/source/list.txt

@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2014-2018 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2014-2019 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,8 +22,8 @@
 
 export LC_ALL=C
 
-u_boot_release="v2019.01"
-u_boot_release_x15="ti-2017.01"
+u_boot_release="v2019.04"
+u_boot_release_x15="v2019.07-rc4"
 
 #contains: rfs_username, release_date
 if [ -f /etc/rcn-ee.conf ] ; then
@@ -109,13 +109,8 @@ setup_desktop () {
 		echo "" >> ${wfile}
 		echo "Section \"Device\"" >> ${wfile}
 		echo "        Identifier      \"Builtin Default fbdev Device 0\"" >> ${wfile}
-
-#		echo "        Driver          \"modesetting\"" >> ${wfile}
-#		echo "        Option          \"AccelMethod\"   \"none\"" >> ${wfile}
 		echo "        Driver          \"fbdev\"" >> ${wfile}
-
 		echo "#HWcursor_false        Option          \"HWcursor\"          \"false\"" >> ${wfile}
-
 		echo "EndSection" >> ${wfile}
 		echo "" >> ${wfile}
 		echo "Section \"Screen\"" >> ${wfile}
@@ -135,7 +130,7 @@ setup_desktop () {
 	if [ -f ${wfile} ] ; then
 		echo "Patching: ${wfile}"
 		sed -i -e 's:#autologin-user=:autologin-user='$rfs_username':g' ${wfile}
-		sed -i -e 's:#autologin-session=UNIMPLEMENTED:autologin-session='$rfs_default_desktop':g' ${wfile}
+		sed -i -e 's:#autologin-session=:autologin-session='$rfs_default_desktop':g' ${wfile}
 		if [ -f /opt/scripts/3rdparty/xinput_calibrator_pointercal.sh ] ; then
 			sed -i -e 's:#display-setup-script=:display-setup-script=/opt/scripts/3rdparty/xinput_calibrator_pointercal.sh:g' ${wfile}
 		fi
@@ -143,8 +138,8 @@ setup_desktop () {
 
 	if [ ! "x${rfs_desktop_background}" = "x" ] ; then
 		mkdir -p /home/${rfs_username}/.config/ || true
-		if [ -d /opt/scripts/desktop-defaults/jessie/lxqt/ ] ; then
-			cp -rv /opt/scripts/desktop-defaults/jessie/lxqt/* /home/${rfs_username}/.config
+		if [ -d /opt/scripts/desktop-defaults/buster/lxqt/ ] ; then
+			cp -rv /opt/scripts/desktop-defaults/buster/lxqt/* /home/${rfs_username}/.config
 		fi
 		chown -R ${rfs_username}:${rfs_username} /home/${rfs_username}/.config/
 	fi
@@ -158,132 +153,65 @@ setup_desktop () {
 	echo "xset s off" >> ${wfile}
 	echo "xsetroot -cursor_name left_ptr" >> ${wfile}
 	chown -R ${rfs_username}:${rfs_username} ${wfile}
-
-#	#Disable LXDE's screensaver on autostart
-#	if [ -f /etc/xdg/lxsession/LXDE/autostart ] ; then
-#		sed -i '/xscreensaver/s/^/#/' /etc/xdg/lxsession/LXDE/autostart
-#	fi
-
-	#echo "CAPE=cape-bone-proto" >> /etc/default/capemgr
-
-#	#root password is blank, so remove useless application as it requires a password.
-#	if [ -f /usr/share/applications/gksu.desktop ] ; then
-#		rm -f /usr/share/applications/gksu.desktop || true
-#	fi
-
-#	#lxterminal doesnt reference .profile by default, so call via loginshell and start bash
-#	if [ -f /usr/bin/lxterminal ] ; then
-#		if [ -f /usr/share/applications/lxterminal.desktop ] ; then
-#			sed -i -e 's:Exec=lxterminal:Exec=lxterminal -l -e bash:g' /usr/share/applications/lxterminal.desktop
-#			sed -i -e 's:TryExec=lxterminal -l -e bash:TryExec=lxterminal:g' /usr/share/applications/lxterminal.desktop
-#		fi
-#	fi
-
 }
 
-install_pip_pkgs () {
-	if [ -f /usr/bin/python ] ; then
-		wget https://bootstrap.pypa.io/get-pip.py || true
-		if [ -f get-pip.py ] ; then
-			python get-pip.py
-			rm -f get-pip.py || true
+setup_docker () {
+	#arm:
+	#docker pull mozillaiot/gateway:arm
 
-			if [ -f /usr/local/bin/pip ] ; then
-				if [ -f /usr/bin/make ] ; then
-					echo "Installing pip packages"
-					git_repo="https://github.com/adafruit/adafruit-beaglebone-io-python.git"
-					git_target_dir="/opt/source/adafruit-beaglebone-io-python"
-					git_clone
-					if [ -f ${git_target_dir}/.git/config ] ; then
-						cd ${git_target_dir}/
-						sed -i -e 's:4.1.0:3.4.0:g' setup.py
-						python setup.py install
-					fi
-				fi
-			fi
-		fi
-	fi
+	#x86:
+	#sudo tar -zcvf ../docker-mozillaiot-gateway-0.10.0-arm.tar.xz ./var/lib/docker/
+
+	mkdir -p /opt/docker_deploy/
+	chown -R ${rfs_username}:docker /opt/docker_deploy/
+
+	wget --directory-prefix="/opt/docker_deploy/" http://builder.gfnd.rcn-ee.org/internal/dl/docker.io/docker-mozillaiot-gateway-0.10.0-arm.tar.xz
+
+	tar xf /opt/docker_deploy/docker-mozillaiot-gateway-0.10.0-arm.tar.xz -C /
+
+	rm -rf /opt/docker_deploy/
+
+	mkdir -p /opt/docker/
+	chown -R ${rfs_username}:docker /opt/docker/
+
+	touch /etc/docker.init.webthings-gateway
+
+#	wfile="/etc/systemd/system/docker-webthings-gateway.service"
+#	echo "[Unit]" > ${wfile}
+#	echo "Description=Mozilla WebThings Gateway Container" >> ${wfile}
+#	echo "Requires=docker.service" >> ${wfile}
+#	echo "After=docker.service" >> ${wfile}
+#	echo "" >> ${wfile}
+#	echo "[Service]" >> ${wfile}
+#	echo "Restart=always" >> ${wfile}
+#	echo "ExecStart=/usr/bin/docker start -a  webthings-gateway" >> ${wfile}
+#	echo "ExecStop=/usr/bin/docker stop -t 2 webthings-gateway" >> ${wfile}
+#	echo "" >> ${wfile}
+#	echo "[Install]" >> ${wfile}
+#	echo "WantedBy=local.target" >> ${wfile}
+
+	#systemctl enable docker-webthings-gateway.service || true
 }
 
 install_git_repos () {
-	if [ -d /usr/local/lib/node_modules/bonescript ] ; then
-		if [ -d /etc/apache2/ ] ; then
-			#bone101 takes over port 80, so shove apache/etc to 8080:
-			if [ -f /etc/apache2/ports.conf ] ; then
-				sed -i -e 's:80:8080:g' /etc/apache2/ports.conf
-			fi
-			if [ -f /etc/apache2/sites-enabled/000-default ] ; then
-				sed -i -e 's:80:8080:g' /etc/apache2/sites-enabled/000-default
-			fi
-			if [ -f /etc/apache2/sites-enabled/000-default.conf ] ; then
-				sed -i -e 's:80:8080:g' /etc/apache2/sites-enabled/000-default.conf
-			fi
-			if [ -f /var/www/html/index.html ] ; then
-				rm -rf /var/www/html/index.html || true
-			fi
-		fi
-	fi
-
-	git_repo="https://github.com/prpplague/Userspace-Arduino"
-	git_target_dir="/opt/source/Userspace-Arduino"
-#	git_clone
-
-	git_repo="https://github.com/strahlex/BBIOConfig.git"
-	git_target_dir="/opt/source/BBIOConfig"
-#	git_clone
-
-	git_repo="https://github.com/prpplague/fb-test-app.git"
-	git_target_dir="/opt/source/fb-test-app"
-#	git_clone
-	if [ -f ${git_target_dir}/.git/config ] ; then
-		cd ${git_target_dir}/
-		if [ -f /usr/bin/make ] ; then
-			make
-		fi
-		cd /
-	fi
-
-	#am335x-pru-package
-	if [ -f /usr/include/prussdrv.h ] ; then
-		git_repo="https://github.com/biocode3D/prufh.git"
-		git_target_dir="/opt/source/prufh"
-#		git_clone
-		if [ -f ${git_target_dir}/.git/config ] ; then
-			cd ${git_target_dir}/
-			if [ -f /usr/bin/make ] ; then
-				make LIBDIR_APP_LOADER=/usr/lib/ INCDIR_APP_LOADER=/usr/include
-			fi
-			cd /
-		fi
-	fi
-
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
-	git_target_dir="/opt/source/dtb-4.4-ti"
-	git_branch="4.4-ti"
-#	git_clone_branch
-
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	git_target_dir="/opt/source/dtb-4.14-ti"
-	git_branch="4.14-ti"
-#	git_clone_branch
+	git_branch="v4.14.x-ti"
+	git_clone_branch
+
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	git_target_dir="/opt/source/dtb-4.19-ti"
+	git_branch="v4.19.x-ti"
+	git_clone_branch
+
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	git_target_dir="/opt/source/dtb-5.4-ti"
+	git_branch="v5.4.x-ti"
+	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/bb.org-overlays"
 	git_target_dir="/opt/source/bb.org-overlays"
-#	git_clone
-
-	git_repo="https://github.com/ungureanuvladvictor/BBBlfs"
-	git_target_dir="/opt/source/BBBlfs"
-#	git_clone
-
-	git_repo="https://github.com/StrawsonDesign/Robotics_Cape_Installer"
-	git_target_dir="/opt/source/Robotics_Cape_Installer"
-	git_branch="v0.3.4"
-#	git_clone_branch
-}
-
-install_build_pkgs () {
-	cd /opt/
-	cd /
+	git_clone
 }
 
 other_source_links () {
@@ -294,7 +222,7 @@ other_source_links () {
 	wget --directory-prefix="/opt/source/u-boot_${u_boot_release}/" ${rcn_https}/${u_boot_release}/0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
 	wget --directory-prefix="/opt/source/u-boot_${u_boot_release}/" ${rcn_https}/${u_boot_release}/0002-U-Boot-BeagleBone-Cape-Manager.patch
 	mkdir -p /opt/source/u-boot_${u_boot_release_x15}/
-	wget --directory-prefix="/opt/source/u-boot_${u_boot_release_x15}/" ${rcn_https}/${u_boot_release_x15}/0001-beagle_x15-uEnv.txt-bootz-n-fixes.patch
+	wget --directory-prefix="/opt/source/u-boot_${u_boot_release_x15}/" ${rcn_https}/${u_boot_release_x15}/0001-am57xx_evm-fixes.patch
 	rm /home/${rfs_username}/.wget-hsts || true
 
 	echo "u-boot_${u_boot_release} : /opt/source/u-boot_${u_boot_release}" >> /opt/source/list.txt
@@ -303,30 +231,12 @@ other_source_links () {
 	chown -R ${rfs_username}:${rfs_username} /opt/source/
 }
 
-unsecure_root () {
-	root_password=$(cat /etc/shadow | grep root | awk -F ':' '{print $2}')
-	sed -i -e 's:'$root_password'::g' /etc/shadow
-
-	if [ -f /etc/ssh/sshd_config ] ; then
-		#Make ssh root@beaglebone work..
-		sed -i -e 's:PermitEmptyPasswords no:PermitEmptyPasswords yes:g' /etc/ssh/sshd_config
-		sed -i -e 's:UsePAM yes:UsePAM no:g' /etc/ssh/sshd_config
-		#Starting with Jessie:
-		sed -i -e 's:PermitRootLogin without-password:PermitRootLogin yes:g' /etc/ssh/sshd_config
-	fi
-
-	if [ -f /etc/sudoers ] ; then
-		#Don't require password for sudo access
-		echo "${rfs_username}  ALL=NOPASSWD: ALL" >>/etc/sudoers
-	fi
-}
-
 is_this_qemu
 
 setup_system
 setup_desktop
+setup_docker
 
-install_pip_pkgs
 if [ -f /usr/bin/git ] ; then
 	git config --global user.email "${rfs_username}@example.com"
 	git config --global user.name "${rfs_username}"
@@ -335,7 +245,5 @@ if [ -f /usr/bin/git ] ; then
 	git config --global --unset-all user.name
 	chown ${rfs_username}:${rfs_username} /home/${rfs_username}/.gitconfig
 fi
-#install_build_pkgs
 other_source_links
-#unsecure_root
 #
