@@ -353,7 +353,7 @@ npm i npm@latest -g
 
 # add own repo
 cat > /etc/apt/sources.list.d/iotcrafter.list <<EOF
-deb [arch=all,armhf] http://download.iotcrafter.com/iotc/bbb stretch main
+deb [arch=all,armhf] http://download.iotcrafter.com/iotc/bbb buster main
 EOF
 # add repo key
 wget -qO - http://download.iotcrafter.com/iotc/iotcrafter.gpg.key | apt-key add -
