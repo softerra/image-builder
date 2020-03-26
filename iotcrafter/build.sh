@@ -50,7 +50,14 @@ echo "Rootfs Done: $(date)"
 debian_iotcrafter=$(cat ./latest_version)
 archive="xz -T0 -z -8 -v"
 # we don't enable cape-universal
-beaglebone="--dtb beaglebone --hostname beaglebone --enable-uboot-cape-overlays --enable-uboot-disable-video --enable-uboot-disable-audio"
+beaglebone="--dtb beaglebone --rootfs_label rootfs --hostname beaglebone --enable-uboot-cape-overlays --enable-uboot-disable-video --enable-uboot-disable-audio"
+pru_rproc=""
+if [[ "${IMG_CONF}" =~ v4\.14 ]]; then
+	pru_rproc="--enable-uboot-pru-rproc-414ti"
+elif [[ "${IMG_CONF}" =~ v4\.19 ]]; then
+	pru_rproc="--enable-uboot-pru-rproc-419ti"
+fi
+
 
 # TODO: allow different image types for the same config (IMG_CONF)
 # need revising pack-error-cleanup-try loop (postbuild.sh)
@@ -112,7 +119,7 @@ generate_img () {
                         cd \${base_rootfs}/
 
                         # force final tar for rootfs to log into a file in the directory
-                        sed -i 's/^[[:space:]]*tar.*--verbose.*\$/& >> setup_sdcard_tar.log/' ./setup_sdcard.sh
+                        #sed -i 's/^[[:space:]]*tar.*--verbose.*\$/& >> setup_sdcard_tar.log/' ./setup_sdcard.sh
                         sudo ./setup_sdcard.sh \${options}
 
                         mv *.img ../ || true
@@ -124,7 +131,7 @@ generate_img () {
 }
 
 base_rootfs="${debian_iotcrafter}"
-options="--img-4gb \${base_rootfs} ${beaglebone}"
+options="--img-4gb \${base_rootfs} ${beaglebone} ${pru_rproc}"
 generate_img
 
 exit 0
