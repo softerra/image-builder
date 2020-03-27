@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2014-2018 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2014-2019 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -109,14 +109,24 @@ install_git_repos () {
 	git_target_dir="/opt/source/BBIOConfig"
 	git_clone
 
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	git_target_dir="/opt/source/dtb-4.14-ti"
-	git_branch="4.14-ti"
+	git_branch="v4.14.x-ti"
 	git_clone_branch
 
-	git_repo="https://github.com/RobertCNelson/dtb-rebuilder.git"
-	git_target_dir="/opt/source/dtb-4.19"
-	git_branch="4.19.x"
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	git_target_dir="/opt/source/dtb-4.19-ti"
+	git_branch="v4.19.x-ti"
+	git_clone_branch
+
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	git_target_dir="/opt/source/dtb-5.4-ti"
+	git_branch="v5.4.x-ti"
+	git_clone_branch
+
+	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	git_target_dir="/opt/source/dtb-5.4"
+	git_branch="v5.4.x"
 	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/bb.org-overlays"

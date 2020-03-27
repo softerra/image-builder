@@ -1,6 +1,6 @@
 #!/bin/bash
 
-server="https://rcn-ee.net/repos/latest/stretch-armhf/LATEST-"
+server="https://rcn-ee.net/repos/latest/buster-armhf/LATEST-"
 
 current_kernel () {
 	if [ -f /tmp/LATEST-${var} ] ; then
@@ -29,25 +29,15 @@ current_kernel () {
 }
 
 if [ -f configs/kernel.data ] ; then
-	git_msg="4.19.x-xM"
-#	var="armv7"      ; ver="LTS414"       ; current_kernel
-	var="armv7"      ; ver="LTS419"       ; current_kernel
+	git_msg="5.4.x-xM"
+#	var="armv7"      ; ver="LTS419"       ; current_kernel
+	var="armv7"      ; ver="LTS54"       ; current_kernel
 #	var="armv7"      ; ver="STABLE"       ; current_kernel
 #	var="armv7"      ; ver="TESTING"      ; current_kernel
 #	var="armv7"      ; ver="EXPERIMENTAL" ; current_kernel
 
-	git_msg="4.14.x-bone-rt"
-#	var="bone-rt"    ; ver="LTS49"  ; current_kernel
-	var="bone-rt"    ; ver="LTS414" ; current_kernel
-#	var="bone-rt"    ; ver="STABLE" ; current_kernel
-
 	git_msg="4.19.x-bone-rt"
 	var="bone-rt"    ; ver="LTS419" ; current_kernel
-
-	git_msg="4.4.x-ti"
-	filter1="xenomai"
-	filter2="rt"
-	var="ti"         ; ver="LTS44"  ; current_kernel
 
 	git_msg="4.14.x-ti"
 	filter1="rt"
