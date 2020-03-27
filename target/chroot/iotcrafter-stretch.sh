@@ -405,6 +405,9 @@ dpkg-reconfigure -fnoninteractive -plow unattended-upgrades
 # remove all iotc's settings
 echo PURGE | debconf-communicate iotc
 
+# fix supervisor start order
+sed -i 's/^After=\(.*\)$/After=\1 getty.target/' /lib/systemd/system/supervisor.service
+
 IOTC_INIT_REV=7ffc3da47a4b183d2ed59a46700983abb18bc861
 wget -P /opt/iotc/bin/ https://raw.githubusercontent.com/softerra/iotc_scripts/${IOTC_INIT_REV}/board/iotc_init.sh
 sed -i 's/^\(iotc_init_version\)=.*$/\1="'${IOTC_INIT_REV}'"/' /opt/iotc/bin/iotc_init.sh
