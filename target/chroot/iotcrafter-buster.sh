@@ -346,6 +346,9 @@ systemctl enable apt-daily.timer
 systemctl enable apt-daily-upgrade.service
 systemctl enable apt-daily-upgrade.timer
 
+# change default target from graphical to multi-user
+systemctl set-default multi-user.target
+
 # install it here when almost whole system is set up (debian user exists)
 npm config set unsafe-perm true
 npm install yarn -g
