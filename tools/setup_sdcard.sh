@@ -1344,6 +1344,10 @@ populate_rootfs () {
 
 	cmdline="coherent_pool=1M net.ifnames=0"
 
+	if [ ! "x${loops_per_jiffy}" = "x" ] ; then
+		cmdline="${cmdline} ${loops_per_jiffy}"
+	fi
+
 	if [ ! "x${rng_core}" = "x" ] ; then
 		cmdline="${cmdline} ${rng_core}"
 	fi
@@ -1366,10 +1370,6 @@ populate_rootfs () {
 		echo "#cmdline=${cmdline} video=${drm_device_identifier}:${drm_device_timing}" >> ${wfile}
 		echo "" >> ${wfile}
 	fi
-
-	echo "#Use an overlayfs on top of a read-only root filesystem:" >> ${wfile}
-	echo "#cmdline=${cmdline} overlayroot=tmpfs" >> ${wfile}
-	echo "" >> ${wfile}
 
 	if [ "x${conf_board}" = "xam335x_boneblack" ] || [ "x${conf_board}" = "xam335x_evm" ] || [ "x${conf_board}" = "xam335x_blank_bbbw" ] ; then
 		if [ ! "x${has_post_uenvtxt}" = "x" ] ; then
@@ -1548,16 +1548,6 @@ populate_rootfs () {
 				echo "#connmanctl> agent on" >> ${wfile}
 				echo "#connmanctl> connect wifi_*_managed_psk" >> ${wfile}
 				echo "#connmanctl> quit" >> ${wfile}
-
-				echo "" >> ${wfile}
-
-				echo "# Ethernet/RNDIS gadget (g_ether)" >> ${wfile}
-				echo "# Used by: /opt/scripts/boot/autoconfigure_usb0.sh" >> ${wfile}
-				echo "iface usb0 inet static" >> ${wfile}
-				echo "    address 192.168.7.2" >> ${wfile}
-				echo "    netmask 255.255.255.252" >> ${wfile}
-				echo "    network 192.168.7.0" >> ${wfile}
-				echo "    gateway 192.168.7.1" >> ${wfile}
 			fi
 		fi
 
@@ -1604,6 +1594,9 @@ populate_rootfs () {
 	if [ ! -f ${TEMPDIR}/disk/opt/scripts/boot/generic-startup.sh ] ; then
 		git clone https://github.com/RobertCNelson/boot-scripts ${TEMPDIR}/disk/opt/scripts/ --depth 1
 		sudo chown -R 1000:1000 ${TEMPDIR}/disk/opt/scripts/
+		if [ ! -f ${TEMPDIR}/disk/etc/default/bb-boot ] ; then
+			sudo cp -v ${TEMPDIR}/disk/opt/scripts/boot/default/bb-boot ${TEMPDIR}/disk/etc/default/
+		fi
 	else
 		cd ${TEMPDIR}/disk/opt/scripts/
 		git pull
