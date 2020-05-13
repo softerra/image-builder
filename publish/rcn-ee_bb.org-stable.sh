@@ -1,6 +1,7 @@
 #!/bin/bash -e
 
 OIB_USER=${OIB_USER:-1000}
+IMAGE_DIR_PREFIX=${IMAGE_DIR_PREFIX:-bb.org}
 
 time=$(date +%Y-%m-%d)
 mirror_dir="/var/www/html/rcn-ee.us/rootfs/bb.org/testing"
@@ -26,6 +27,8 @@ if [ ! -f jenkins.build ] ; then
 
 ./RootStock-NG.sh -c bb.org-debian-buster-console-v4.19
 ./RootStock-NG.sh -c bb.org-debian-buster-iot-v4.19
+./RootStock-NG.sh -c bb.org-debian-buster-iot-tidl-v4.14
+#./RootStock-NG.sh -c bb.org-debian-buster-iot-tidl-v4.19
 ./RootStock-NG.sh -c bb.org-debian-buster-lxqt-v4.19
 ./RootStock-NG.sh -c bb.org-debian-buster-iot-webthings-gateway-v4.19
 
@@ -49,12 +52,13 @@ fi
               debian_buster_console="debian-10.3-console-armhf-${time}"
            debian_buster_console_xm="debian-10.3-console-xm-armhf-${time}"
                   debian_buster_iot="debian-10.3-iot-armhf-${time}"
+             debian_buster_iot_tidl="debian-10.3-iot-tidl-armhf-${time}"
         debian_buster_iot_grove_kit="debian-10.3-iot-grove-kit-armhf-${time}"
               debian_buster_efi_iot="debian-10.3-efi-iot-armhf-${time}"
                  debian_buster_lxqt="debian-10.3-lxqt-armhf-${time}"
 debian_buster_iot_webthings_gateway="debian-10.3-iot-webthings-gateway-armhf-${time}"
 
-              ubuntu_bionic_ros_iot="ubuntu-18.04.3-ros-iot-armhf-${time}"
+              ubuntu_bionic_ros_iot="ubuntu-18.04.4-ros-iot-armhf-${time}"
 
 xz_img="xz -T3 -z -8"
 xz_tar="xz -T4 -z -8"
@@ -186,14 +190,15 @@ options="--img-1gb BBGG-blank-\${base_rootfs}           ${beaglebone} ${pru_rpro
 base_rootfs="${debian_stretch_iot}" ; blend="stretch-iot" ; extract_base_rootfs
 
 options="--img-4gb am57xx-\${base_rootfs}               ${beagle_x15}"                                    ; generate_img
+options="--img-4gb am57xx-eMMC-flasher-\${base_rootfs}  ${beagle_x15} --emmc-flasher"                     ; generate_img
 options="--img-4gb bone-\${base_rootfs}                 ${beaglebone} ${pru_rproc_v414ti}"                ; generate_img
 options="--img-4gb bone-eMMC-flasher-\${base_rootfs}    ${beaglebone} ${pru_rproc_v414ti} --emmc-flasher" ; generate_img
 
 ###DEBIAN STRETCH: iot-tidl
 base_rootfs="${debian_stretch_iot_tidl}" ; blend="stretch-iot-tidl" ; extract_base_rootfs
 
-options="--img-4gb am57xx-\${base_rootfs}               ${beagle_x15}"                                    ; generate_img
-options="--img-4gb am57xx-eMMC-flasher-\${base_rootfs}  ${beagle_x15} --emmc-flasher"                     ; generate_img
+options="--img-6gb am57xx-\${base_rootfs}               ${beagle_x15}"                                    ; generate_img
+options="--img-6gb am57xx-eMMC-flasher-\${base_rootfs}  ${beagle_x15} --emmc-flasher"                     ; generate_img
 
 ###DEBIAN STRETCH: iot-grove-kit
 base_rootfs="${debian_stretch_iot_grove_kit}" ; blend="stretch-iot-grove-kit" ; extract_base_rootfs
@@ -251,6 +256,12 @@ options="--img-4gb am57xx-eMMC-flasher-\${base_rootfs}  ${beagle_x15} --emmc-fla
 options="--img-4gb bone-\${base_rootfs}                 ${beaglebone} ${pru_rproc_v419ti}"                ; generate_img
 options="--img-4gb bone-eMMC-flasher-\${base_rootfs}    ${beaglebone} ${pru_rproc_v419ti} --emmc-flasher" ; generate_img
 
+###DEBIAN BUSTER: iot-tidl
+base_rootfs="${debian_buster_iot_tidl}" ; blend="buster-iot-tidl" ; extract_base_rootfs
+
+options="--img-6gb am57xx-\${base_rootfs}               ${beagle_x15}"                                    ; generate_img
+options="--img-6gb am57xx-eMMC-flasher-\${base_rootfs}  ${beagle_x15} --emmc-flasher"                     ; generate_img
+
 ###DEBIAN BUSTER: iot-grove-kit
 base_rootfs="${debian_buster_iot_grove_kit}" ; blend="buster-iot-grove-kit" ; extract_base_rootfs
 
@@ -295,6 +306,7 @@ base_rootfs="${debian_buster_tiny}"           ; blend="buster-tiny"       ; arch
 base_rootfs="${debian_buster_console}"        ; blend="buster-console"    ; archive_base_rootfs
 base_rootfs="${debian_buster_console_xm}"     ; blend="buster-console-xm" ; archive_base_rootfs
 base_rootfs="${debian_buster_iot}"            ; blend="buster-iot"        ; archive_base_rootfs
+base_rootfs="${debian_buster_iot_tidl}"       ; blend="buster-iot-tidl"   ; archive_base_rootfs
 base_rootfs="${debian_buster_iot_grove_kit}"  ; blend="buster-iot-grove-kit"   ; archive_base_rootfs
 base_rootfs="${debian_buster_efi_iot}"        ; blend="buster-efi-iot"    ; archive_base_rootfs
 base_rootfs="${debian_buster_lxqt}"           ; blend="buster-lxqt"       ; archive_base_rootfs
@@ -325,14 +337,15 @@ wfile="BBGG-blank-\${base_rootfs}-1gb"           ; archive_img
 base_rootfs="${debian_stretch_iot}" ; blend="stretch-iot"
 
 wfile="am57xx-\${base_rootfs}-4gb"               ; archive_img
+wfile="am57xx-eMMC-flasher-\${base_rootfs}-4gb"  ; archive_img
 wfile="bone-\${base_rootfs}-4gb"                 ; archive_img
 wfile="bone-eMMC-flasher-\${base_rootfs}-4gb"    ; archive_img
 
 ###DEBIAN STRETCH: iot-tidl
 base_rootfs="${debian_stretch_iot_tidl}" ; blend="stretch-iot-tidl"
 
-wfile="am57xx-\${base_rootfs}-4gb"               ; archive_img
-wfile="am57xx-eMMC-flasher-\${base_rootfs}-4gb"  ; archive_img
+wfile="am57xx-\${base_rootfs}-6gb"               ; archive_img
+wfile="am57xx-eMMC-flasher-\${base_rootfs}-6gb"  ; archive_img
 
 ###DEBIAN STRETCH: iot-grove-kit
 base_rootfs="${debian_stretch_iot_grove_kit}" ; blend="stretch-iot-grove-kit"
@@ -391,6 +404,12 @@ wfile="am57xx-eMMC-flasher-\${base_rootfs}-4gb"  ; archive_img
 wfile="bone-\${base_rootfs}-4gb"                 ; archive_img
 wfile="bone-eMMC-flasher-\${base_rootfs}-4gb"    ; archive_img
 
+###DEBIAN BUSTER: iot-tidl
+base_rootfs="${debian_buster_iot_tidl}" ; blend="buster-iot-tidl"
+
+wfile="am57xx-\${base_rootfs}-6gb"               ; archive_img
+wfile="am57xx-eMMC-flasher-\${base_rootfs}-6gb"  ; archive_img
+
 ###DEBIAN BUSTER: iot-grove-kit
 base_rootfs="${debian_buster_iot_grove_kit}" ; blend="buster-iot-grove-kit"
 
@@ -424,37 +443,12 @@ __EOF__
 
 chmod +x ${DIR}/deploy/gift_wrap_final_images.sh
 
-image_prefix="bb.org"
-#node:
-if [ ! -d /var/www/html/farm/images/ ] ; then
-	if [ ! -d /mnt/farm/images/ ] ; then
-		#nfs mount...
-		sudo mount -a
-	fi
+#x86: My Server...
+if [ -f /opt/images/nas.FREENAS ] ; then
+	sudo mkdir -p /opt/images/wip/${IMAGE_DIR_PREFIX}-${time}/ || true
 
-	if [ -d /mnt/farm/images/ ] ; then
-		if [ ! -d /mnt/farm/images/${image_prefix}-${time}/ ] ; then
-			echo "mkdir: /mnt/farm/images/${image_prefix}-${time}/"
-			mkdir -p /mnt/farm/images/${image_prefix}-${time}/ || true
-		fi
+	echo "Copying: *.tar to server: images/${IMAGE_DIR_PREFIX}-${time}/"
+	sudo cp -v ${DIR}/deploy/gift_wrap_final_images.sh /opt/images/wip/${IMAGE_DIR_PREFIX}-${time}/gift_wrap_final_images.sh || true
 
-		echo "Copying: *.tar to server: images/${image_prefix}-${time}/"
-		cp -v ${DIR}/deploy/*.tar /mnt/farm/images/${image_prefix}-${time}/ || true
-		cp -v ${DIR}/deploy/gift_wrap_final_images.sh /mnt/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
-		sudo chmod +x /mnt/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
-		sudo chown -R ${OIB_USER}:${OIB_USER} /var/www/html/farm/images/${image_prefix}-${time}/ || true
-	fi
-fi
-
-#x86:
-if [ -d /var/www/html/farm/images/ ] ; then
-	mkdir -p /var/www/html/farm/images/${image_prefix}-${time}/ || true
-
-	echo "Copying: *.tar to server: images/${image_prefix}-${time}/"
-	cp -v ${DIR}/deploy/gift_wrap_final_images.sh /var/www/html/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
-
-	sudo chown -R ${OIB_USER}:${OIB_USER} /var/www/html/farm/images/${image_prefix}-${time}/ || true
-	sudo chmod +x /var/www/html/farm/images/${image_prefix}-${time}/gift_wrap_final_images.sh || true
-	sudo chmod g+wr /var/www/html/farm/images/${image_prefix}-${time}/ || true
-	ls -lha /var/www/html/farm/images/${image_prefix}-${time}/
+	ls -lha /opt/images/wip/${IMAGE_DIR_PREFIX}-${time}/
 fi
