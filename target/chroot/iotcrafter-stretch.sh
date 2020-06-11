@@ -416,4 +416,7 @@ chmod 755 /opt/iotc/bin/iotc_init.sh
 # - don't force ifup for wlan
 sed -i 's/^\(IOTC_WLAN_FORCE_IFUP\)=.*$/\1=0/' /opt/iotc/bin/iotc_init.sh
 
+# Hold packages (#7502)
+apt-mark hold linux-image-${repo_rcnee_pkg_version}
+
 chown -R ${rfs_username}:${rfs_username} /home/${rfs_username}
