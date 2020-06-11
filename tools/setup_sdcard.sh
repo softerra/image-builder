@@ -758,8 +758,7 @@ create_partitions () {
 			media_prefix="/dev/mapper/${test_loop}p"
 		else
 			# if run in a docker container try creating devices manually
-			cont_name=$(cat /proc/1/cgroup | head -n1 | cut -d ':' -f3 | \
-						sed -n 's/\/\([[:alpha:]]*\)\/.*/\1/ p')
+			cont_name=`cat /proc/1/cgroup | sed -n -r '/docker|lxc/ { s/.*(docker|lxc).*/\1/ p; q }'`
 			if [ "$cont_name" = "lxc" -o "$cont_name" = "docker" ]; then
 				echo "Running in $cont_name container"
 
