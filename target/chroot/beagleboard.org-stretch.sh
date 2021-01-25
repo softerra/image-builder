@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2014-2019 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2014-2020 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@
 export LC_ALL=C
 
 u_boot_release="v2019.04"
-u_boot_release_x15="v2019.07-rc4"
+u_boot_release_x15="v2020.10-rc2"
 
 #contains: rfs_username, release_date
 if [ -f /etc/rcn-ee.conf ] ; then
@@ -109,13 +109,10 @@ setup_desktop () {
 		echo "" >> ${wfile}
 		echo "Section \"Device\"" >> ${wfile}
 		echo "        Identifier      \"Builtin Default fbdev Device 0\"" >> ${wfile}
-
 #		echo "        Driver          \"modesetting\"" >> ${wfile}
 #		echo "        Option          \"AccelMethod\"   \"none\"" >> ${wfile}
 		echo "        Driver          \"fbdev\"" >> ${wfile}
-
 		echo "#HWcursor_false        Option          \"HWcursor\"          \"false\"" >> ${wfile}
-
 		echo "EndSection" >> ${wfile}
 		echo "" >> ${wfile}
 		echo "Section \"Screen\"" >> ${wfile}
@@ -251,12 +248,12 @@ install_git_repos () {
 
 	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	git_target_dir="/opt/source/dtb-4.19-ti"
-	git_branch="v4.19.x-ti"
+	git_branch="v4.19.x-ti-overlays"
 	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	git_target_dir="/opt/source/dtb-5.4-ti"
-	git_branch="v5.4.x-ti"
+	git_branch="v5.4.x-ti-overlays"
 	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/bb.org-overlays"

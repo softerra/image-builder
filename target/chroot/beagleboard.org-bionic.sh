@@ -23,7 +23,7 @@
 export LC_ALL=C
 
 u_boot_release="v2019.04"
-u_boot_release_x15="v2019.07-rc4"
+u_boot_release_x15="v2020.10-rc2"
 
 #contains: rfs_username, release_date
 if [ -f /etc/rcn-ee.conf ] ; then
@@ -224,12 +224,12 @@ install_git_repos () {
 
 	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	git_target_dir="/opt/source/dtb-4.19-ti"
-	git_branch="v4.19.x-ti"
+	git_branch="v4.19.x-ti-overlays"
 	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	git_target_dir="/opt/source/dtb-5.4-ti"
-	git_branch="v5.4.x-ti"
+	git_branch="v5.4.x-ti-overlays"
 	git_clone_branch
 
 	git_repo="https://github.com/beagleboard/bb.org-overlays"

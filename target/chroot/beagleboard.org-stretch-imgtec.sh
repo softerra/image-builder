@@ -97,18 +97,6 @@ setup_system () {
 	echo "" >> /etc/securetty
 	echo "#USB Gadget Serial Port" >> /etc/securetty
 	echo "ttyGS0" >> /etc/securetty
-
-#	this is now done in the choot, need to double check the mode..
-#	# Enable all users to read hidraw devices
-#	cat <<- EOF > /etc/udev/rules.d/99-hdiraw.rules
-#		SUBSYSTEM=="hidraw", MODE="0644"
-#	EOF
-
-	# Enable PAM for ssh links
-	# Fixes an issue where users cannot change ulimits when logged in via
-	# ssh, which causes some Machinekit functions to fail
-	sed -i 's/^UsePAM.*$/UsePam yes/' /etc/ssh/sshd_config
-
 }
 
 setup_desktop () {
@@ -193,7 +181,7 @@ setup_desktop () {
 
 }
 
-install_pip_pkgs () {
+install_git_repos () {
 	if [ -f /usr/bin/make ] ; then
 		echo "Installing pip packages"
 		git_repo="https://github.com/adafruit/adafruit-beaglebone-io-python.git"
@@ -208,17 +196,10 @@ install_pip_pkgs () {
 			if [ -f /usr/bin/python3 ] ; then
 				python3 setup.py install || true
 			fi
+			git reset HEAD --hard || true
 		fi
 	fi
-}
 
-early_git_repos () {
-	git_repo="https://github.com/cdsteinkuehler/machinekit-beaglebone-extras"
-	git_target_dir="/opt/source/machinekit-extras"
-	git_clone
-}
-
-install_git_repos () {
 	if [ -d /usr/local/lib/node_modules/bonescript ] ; then
 		if [ -d /etc/apache2/ ] ; then
 			#bone101 takes over port 80, so shove apache/etc to 8080:
@@ -240,21 +221,9 @@ install_git_repos () {
 	if [ -f /var/www/html/index.nginx-debian.html ] ; then
 		rm -rf /var/www/html/index.nginx-debian.html || true
 
-		echo "diff --git a/etc/nginx/sites-available/default b/etc/nginx/sites-available/default" > /tmp/nginx.patch
-		echo "index c841ceb..4f977d8 100644" >> /tmp/nginx.patch
-		echo "--- a/etc/nginx/sites-available/default" >> /tmp/nginx.patch
-		echo "+++ b/etc/nginx/sites-available/default" >> /tmp/nginx.patch
-		echo "@@ -49,6 +49,7 @@ server {" >> /tmp/nginx.patch
-		echo -e " \t\t# First attempt to serve request as file, then" >> /tmp/nginx.patch
-		echo -e " \t\t# as directory, then fall back to displaying a 404." >> /tmp/nginx.patch
-		echo -e " \t\ttry_files \$uri \$uri/ =404;" >> /tmp/nginx.patch
-		echo -e "+\t\tautoindex on;" >> /tmp/nginx.patch
-		echo -e " \t}" >> /tmp/nginx.patch
-		echo " " >> /tmp/nginx.patch
-		echo -e " \t# pass PHP scripts to FastCGI server" >> /tmp/nginx.patch
-
-		cd /
-		patch -p1 < /tmp/nginx.patch
+		if [ -d /opt/scripts/distro/buster/nginx/ ] ; then
+			cp -v /opt/scripts/distro/buster/nginx/default /etc/nginx/sites-available/default
+		fi
 	fi
 
 	git_repo="https://github.com/strahlex/BBIOConfig.git"
@@ -294,13 +263,59 @@ install_git_repos () {
 	git_target_dir="/opt/source/bb.org-overlays"
 	git_clone
 
-	git_repo="https://github.com/StrawsonDesign/librobotcontrol"
-	git_target_dir="/opt/source/librobotcontrol"
-	git_clone
+	if [ -f /usr/lib/librobotcontrol.so ] ; then
+		git_repo="https://github.com/StrawsonDesign/librobotcontrol"
+		git_target_dir="/opt/source/librobotcontrol"
+		git_clone
+
+		git_repo="https://github.com/mcdeoliveira/rcpy"
+		git_target_dir="/opt/source/rcpy"
+		git_clone
+		if [ -f ${git_target_dir}/.git/config ] ; then
+			cd ${git_target_dir}/
+			if [ -f /usr/bin/python3 ] ; then
+				/usr/bin/python3 setup.py install
+			fi
+		fi
+
+		git_repo="https://github.com/mcdeoliveira/pyctrl"
+		git_target_dir="/opt/source/pyctrl"
+		git_clone
+		if [ -f ${git_target_dir}/.git/config ] ; then
+			cd ${git_target_dir}/
+			if [ -f /usr/bin/python3 ] ; then
+				/usr/bin/python3 setup.py install
+			fi
+		fi
+	fi
 
 	git_repo="https://github.com/mvduin/py-uio"
 	git_target_dir="/opt/source/py-uio"
 	git_clone
+
+	git_repo="https://github.com/powervr-graphics/Native_SDK"
+	git_target_dir="/opt/Native_SDK"
+	git_clone
+	if [ -f ${git_target_dir}/.git/config ] ; then
+		cd ${git_target_dir}/
+		mkdir cmake-build
+		cd cmake-build
+		cmake .. -DPVR_BUILD_OPENGLES2_EXAMPLES=1 -DPVR_WINDOW_SYSTEM=NullWS -DCMAKE_BUILD_TYPE=Debug
+		cmake --build .
+	fi
+}
+
+workshop_stuff () {
+	git_repo="https://github.com/RobertCNelson/Teardown-2018-PocketBeagle"
+	git_target_dir="/home/debian/Teardown-2018-PocketBeagle"
+	git_clone
+	if [ -f ${git_target_dir}/.git/config ] ; then
+		cd ${git_target_dir}/
+		./scripts/get_all.sh
+		./scripts/build_u-boot.sh
+		./scripts/build_linux.sh
+	fi
+	chown -R ${rfs_username}:${rfs_username} /home/debian/Teardown-2018-PocketBeagle
 }
 
 other_source_links () {
@@ -341,11 +356,9 @@ unsecure_root () {
 
 is_this_qemu
 
-early_git_repos
 setup_system
 setup_desktop
 
-install_pip_pkgs
 if [ -f /usr/bin/git ] ; then
 	git config --global user.email "${rfs_username}@example.com"
 	git config --global user.name "${rfs_username}"
@@ -354,6 +367,7 @@ if [ -f /usr/bin/git ] ; then
 	git config --global --unset-all user.name
 	chown ${rfs_username}:${rfs_username} /home/${rfs_username}/.gitconfig
 fi
+#workshop_stuff
 other_source_links
-unsecure_root
+#unsecure_root
 #

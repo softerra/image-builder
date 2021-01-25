@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 #
-# Copyright (c) 2012-2019 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2012-2020 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -252,6 +252,12 @@ if [ "x${host_arch}" != "xarmv7l" ] && [ "x${host_arch}" != "xaarch64" ] ; then
 	fi
 fi
 
+if [ "x${host_arch}" != "xriscv64" ] ; then
+	if [ "x${deb_arch}" = "xriscv64" ] ; then
+		sudo cp $(which qemu-riscv64-static) "${tempdir}/usr/bin/"
+	fi
+fi
+
 chroot_mount_run
 echo "Log: Running: debootstrap second-stage in [${tempdir}]"
 sudo chroot "${tempdir}" debootstrap/debootstrap --second-stage
@@ -281,6 +287,7 @@ if [ "x${chroot_very_small_image}" = "xenable" ] ; then
 	echo "" >> /tmp/01_nodoc
 
 	sudo mv /tmp/01_nodoc "${tempdir}/etc/dpkg/dpkg.cfg.d/01_nodoc"
+	sudo chown root:root "${tempdir}/etc/dpkg/dpkg.cfg.d/01_nodoc"
 
 	sudo mkdir -p "${tempdir}/etc/apt/apt.conf.d/" || true
 
@@ -290,10 +297,12 @@ if [ "x${chroot_very_small_image}" = "xenable" ] ; then
 	echo "  pkgcache \"\";" >> /tmp/02nocache
 	echo "}" >> /tmp/02nocache
 	sudo mv  /tmp/02nocache "${tempdir}/etc/apt/apt.conf.d/02nocache"
+	sudo chown root:root "${tempdir}/etc/apt/apt.conf.d/02nocache"
 
 	#apt: drop translations...
 	echo "Acquire::Languages \"none\";" > /tmp/02translations
 	sudo mv /tmp/02translations "${tempdir}/etc/apt/apt.conf.d/02translations"
+	sudo chown root:root "${tempdir}/etc/apt/apt.conf.d/02translations"
 
 	echo "Log: after locale/man purge"
 	report_size
@@ -310,6 +319,7 @@ echo "path-exclude=/etc/kernel/postrm.d/zz-flash-kernel" >> /tmp/01_noflash_kern
 echo ""  >> /tmp/01_noflash_kernel
 
 sudo mv /tmp/01_noflash_kernel "${tempdir}/etc/dpkg/dpkg.cfg.d/01_noflash_kernel"
+sudo chown root:root "${tempdir}/etc/dpkg/dpkg.cfg.d/01_noflash_kernel"
 
 sudo mkdir -p "${tempdir}/usr/share/flash-kernel/db/" || true
 sudo cp -v "${OIB_DIR}/target/other/rcn-ee.db" "${tempdir}/usr/share/flash-kernel/db/"
@@ -317,38 +327,51 @@ sudo cp -v "${OIB_DIR}/target/other/rcn-ee.db" "${tempdir}/usr/share/flash-kerne
 #generic apt.conf tweaks for flash/mmc devices to save on wasted space...
 sudo mkdir -p "${tempdir}/etc/apt/apt.conf.d/" || true
 
-#apt: emulate apt-get clean:
-echo '#Custom apt-get clean' > /tmp/02apt-get-clean
-echo 'DPkg::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb || true"; };' >> /tmp/02apt-get-clean
-echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb || true"; };' >> /tmp/02apt-get-clean
-sudo mv /tmp/02apt-get-clean "${tempdir}/etc/apt/apt.conf.d/02apt-get-clean"
+
+if [ "x${chroot_very_small_image}" = "xenable" ] ; then
+	#apt: emulate apt-get clean:
+	echo '#Custom apt-get clean' > /tmp/02apt-get-clean
+	echo 'DPkg::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb || true"; };' >> /tmp/02apt-get-clean
+	echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb || true"; };' >> /tmp/02apt-get-clean
+	sudo mv /tmp/02apt-get-clean "${tempdir}/etc/apt/apt.conf.d/02apt-get-clean"
+	sudo chown root:root "${tempdir}/etc/apt/apt.conf.d/02apt-get-clean"
+fi
 
 #apt: drop translations
 echo 'Acquire::Languages "none";' > /tmp/02-no-languages
 sudo mv /tmp/02-no-languages "${tempdir}/etc/apt/apt.conf.d/02-no-languages"
+sudo chown root:root "${tempdir}/etc/apt/apt.conf.d/02-no-languages"
+
+#apt: no PDiffs..
+echo 'Acquire::PDiffs "0";' > /tmp/02-no-pdiffs
+sudo mv /tmp/02-no-pdiffs "${tempdir}/etc/apt/apt.conf.d/02-no-pdiffs"
+sudo chown root:root "${tempdir}/etc/apt/apt.conf.d/02-no-pdiffs"
+
+if [ "x${chroot_very_small_image}" = "xenable" ] ; then
+	if [ "x${deb_distribution}" = "xdebian" ] ; then
+		#apt: /var/lib/apt/lists/, store compressed only
+		case "${deb_codename}" in
+		stretch|buster)
+			echo 'Acquire::GzipIndexes "true"; APT::Compressor::xz::Cost "40";' > /tmp/02compress-indexes
+			sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
+			sudo chown root:root "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
+			;;
+		sid)
+			###FIXME: close to release switch to ^ xz, right now <next> is slow on apt...
+			echo 'Acquire::GzipIndexes "true"; APT::Compressor::gzip::Cost "40";' > /tmp/02compress-indexes
+			sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
+			sudo chown root:root "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
+			;;
+		esac
+	fi
+fi
 
 if [ "x${deb_distribution}" = "xdebian" ] ; then
-	#apt: /var/lib/apt/lists/, store compressed only
-	case "${deb_codename}" in
-	stretch|buster)
-		echo 'Acquire::GzipIndexes "true"; APT::Compressor::xz::Cost "40";' > /tmp/02compress-indexes
-		sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
-		;;
-	sid)
-		###FIXME: close to release switch to ^ xz, right now <next> is slow on apt...
-		echo 'Acquire::GzipIndexes "true"; APT::Compressor::gzip::Cost "40";' > /tmp/02compress-indexes
-		sudo mv /tmp/02compress-indexes "${tempdir}/etc/apt/apt.conf.d/02compress-indexes"
-		;;
-	esac
-
 	if [ "${apt_proxy}" ] ; then
-		#apt: make sure apt-cacher-ng doesn't break oracle-java8-installer
-		echo 'Acquire::http::Proxy::download.oracle.com "DIRECT";' > /tmp/03-proxy-oracle
-		sudo mv /tmp/03-proxy-oracle "${tempdir}/etc/apt/apt.conf.d/03-proxy-oracle"
-
 		#apt: make sure apt-cacher-ng doesn't break https repos
 		echo 'Acquire::http::Proxy::deb.nodesource.com "DIRECT";' > /tmp/03-proxy-https
 		sudo mv /tmp/03-proxy-https "${tempdir}/etc/apt/apt.conf.d/03-proxy-https"
+		sudo chown root:root "${tempdir}/etc/apt/apt.conf.d/03-proxy-https"
 	fi
 fi
 
@@ -453,6 +476,7 @@ fi
 
 if [ -f /tmp/sources.list ] ; then
 	sudo mv /tmp/sources.list "${tempdir}/etc/apt/sources.list"
+	sudo chown root:root "${tempdir}/etc/apt/sources.list"
 fi
 
 if [ "x${repo_external}" = "xenable" ] ; then
@@ -470,6 +494,7 @@ fi
 if [ "${apt_proxy}" ] ; then
 	echo "Acquire::http::Proxy \"http://${apt_proxy}\";" > /tmp/apt.conf
 	sudo mv /tmp/apt.conf "${tempdir}/etc/apt/apt.conf"
+	sudo chown root:root "${tempdir}/etc/apt/apt.conf"
 fi
 
 echo "127.0.0.1	localhost" > /tmp/hosts
@@ -743,8 +768,58 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 				apt-get -y install ti-cmem-modules-${repo_rcnee_pkg_version} || true
 			fi
 
+			if [ ! "x${repo_rcnee_sgx_preinstall}" = "x" ] ; then
+				apt-get -y install ${repo_rcnee_sgx_preinstall}-modules-${repo_rcnee_pkg_version} || true
+			fi
+
+			if [ -f /lib/firmware/am335x-pru0-fw.sleep ] ; then
+				cp -v /lib/firmware/am335x-pru0-fw.sleep /lib/firmware/am335x-pru0-fw
+				/bin/chgrp gpio /lib/firmware/am335x-pru0-fw
+				/bin/chmod g=u /lib/firmware/am335x-pru0-fw
+			fi
+
+			if [ -f /lib/firmware/am335x-pru1-fw.sleep ] ; then
+				cp -v /lib/firmware/am335x-pru1-fw.sleep /lib/firmware/am335x-pru1-fw
+				/bin/chgrp gpio /lib/firmware/am335x-pru1-fw
+				/bin/chmod g=u /lib/firmware/am335x-pru1-fw
+			fi
+
+			if [ -f /lib/firmware/am57xx-pru1_0-fw.sleep ] ; then
+				cp -v /lib/firmware/am57xx-pru1_0-fw.sleep /lib/firmware/am57xx-pru1_0-fw
+				/bin/chgrp gpio /lib/firmware/am57xx-pru1_0-fw
+				/bin/chmod g=u /lib/firmware/am57xx-pru1_0-fw
+			fi
+
+			if [ -f /lib/firmware/am57xx-pru1_1-fw.sleep ] ; then
+				cp -v /lib/firmware/am57xx-pru1_1-fw.sleep /lib/firmware/am57xx-pru1_1-fw
+				/bin/chgrp gpio /lib/firmware/am57xx-pru1_1-fw
+				/bin/chmod g=u /lib/firmware/am57xx-pru1_1-fw
+			fi
+
+			if [ -f /lib/firmware/am57xx-pru2_0-fw.sleep ] ; then
+				cp -v /lib/firmware/am57xx-pru2_0-fw.sleep /lib/firmware/am57xx-pru2_0-fw
+				/bin/chgrp gpio /lib/firmware/am57xx-pru2_0-fw
+				/bin/chmod g=u /lib/firmware/am57xx-pru2_0-fw
+			fi
+
+			if [ -f /lib/firmware/am57xx-pru2_1-fw.sleep ] ; then
+				cp -v /lib/firmware/am57xx-pru1_1-fw.sleep /lib/firmware/am57xx-pru2_1-fw
+				/bin/chgrp gpio /lib/firmware/am57xx-pru2_1-fw
+				/bin/chmod g=u /lib/firmware/am57xx-pru2_1-fw
+			fi
+
 			depmod -a ${repo_rcnee_pkg_version}
 			update-initramfs -u -k ${repo_rcnee_pkg_version}
+		fi
+	}
+
+	install_python_pkgs () {
+		if [ ! "x${python3_pkgs}" = "x" ] ; then
+			if [ ! "x${python3_extra_index}" = "x" ] ; then
+				python3 -m pip install --extra-index-url ${python3_extra_index} ${python3_pkgs}
+			else
+				python3 -m pip install ${python3_pkgs}
+			fi
 		fi
 	}
 
@@ -757,6 +832,20 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 			if [ -f /etc/ssh/sshd_config ] ; then
 				sed -i -e 's:#Banner none:Banner /etc/issue.net:g' /etc/ssh/sshd_config
 			fi
+		fi
+
+		# set system type
+		echo "ICON_NAME=computer-embedded" > /etc/machine-info
+		echo "CHASSIS=embedded" >> /etc/machine-info
+
+		#https://github.com/RobertCNelson/omap-image-builder/issues/131
+		if [ -f /var/lib/connman/settings ] ; then
+			echo "Log: (chroot): /var/lib/connman/settings"
+			cat /var/lib/connman/settings
+			sed -i -e 's:OfflineMode=false:OfflineMode=false\nTimezoneUpdates=manual:g' /var/lib/connman/settings
+			sed -i -e 's:OfflineMode=false:OfflineMode=false\nTimeUpdates=manual:g' /var/lib/connman/settings
+			echo "Log: (chroot): Patched: /var/lib/connman/settings"
+			cat /var/lib/connman/settings
 		fi
 	}
 
@@ -901,7 +990,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 		echo "SUBSYSTEM==\"cmem\", GROUP=\"tisdk\", MODE=\"0660\"" > /etc/udev/rules.d/tisdk.rules
 		echo "SUBSYSTEM==\"rpmsg_rpc\", GROUP=\"tisdk\", MODE=\"0660\"" >> /etc/udev/rules.d/tisdk.rules
 
-		default_groups="admin,adm,cloud9ide,dialout,docker,gpio,pwm,eqep,iio,i2c,remoteproc,kmem,spi,cdrom,floppy,audio,dip,video,netdev,plugdev,bluetooth,users,systemd-journal,tisdk,weston-launch,xenomai"
+		default_groups="admin,adm,cloud9ide,dialout,docker,gpio,pwm,eqep,iio,i2c,input,remoteproc,kmem,spi,cdrom,floppy,audio,dip,video,netdev,plugdev,bluetooth,users,systemd-journal,tisdk,weston-launch,xenomai"
 
 		pkg="sudo"
 		dpkg_check
@@ -947,9 +1036,10 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 				passwd -l root || true
 			else
 				passwd <<-EOF
-				root
-				root
+				${rfs_root_password}
+				${rfs_root_password}
 				EOF
+				echo "export PATH=\$PATH:/usr/local/sbin:/usr/sbin:/sbin" >> /root/.bashrc
 			fi
 
 			sed -i -e 's:#EXTRA_GROUPS:EXTRA_GROUPS:g' /etc/adduser.conf
@@ -1143,6 +1233,7 @@ cat > "${DIR}/chroot_script.sh" <<-__EOF__
 
 	install_pkg_updates
 	install_pkgs
+	install_python_pkgs
 	system_tweaks
 	set_locale
 	if [ "x${chroot_not_reliable_deborphan}" = "xenable" ] ; then
@@ -1236,14 +1327,23 @@ if [ "x${include_firmware}" = "xenable" ] ; then
 	fi
 fi
 
-if [ "x${repo_rcnee_sgx}" = "xenable" ] ; then
-	sgx_http="https://rcn-ee.net/repos/debian/pool/main"
-	sudo mkdir -p "${tempdir}/opt/sgx/"
-	sudo wget --directory-prefix="${tempdir}/opt/sgx/" ${sgx_http}/t/ti-sgx-ti33x-ddk-um/ti-sgx-ti33x-ddk-um_1.14.3699939-git20171201.0-0rcnee9~stretch+20190328_armhf.deb
-	sudo wget --directory-prefix="${tempdir}/opt/sgx/" ${sgx_http}/t/ti-sgx-ti335x-modules-${repo_rcnee_pkg_version}/ti-sgx-ti335x-modules-${repo_rcnee_pkg_version}_1${deb_codename}_armhf.deb
-	sudo wget --directory-prefix="${tempdir}/opt/sgx/" ${sgx_http}/t/ti-sgx-jacinto6evm-modules-${repo_rcnee_pkg_version}/ti-sgx-jacinto6evm-modules-${repo_rcnee_pkg_version}_1${deb_codename}_armhf.deb
-	wfile="${tempdir}/opt/sgx/status"
-	sudo sh -c "echo 'not_installed' >> ${wfile}"
+#repo_rcnee_sgx_preinstall: we've pre-selected ti335x or jacinto6evm, no decision on first bootup...
+if [ "x${repo_rcnee_sgx_preinstall}" = "x" ] ; then
+	if [ "x${repo_rcnee_sgx}" = "xenable" ] ; then
+		sgx_http="https://rcn-ee.net/repos/debian/pool/main"
+		sudo mkdir -p "${tempdir}/opt/sgx/"
+		sudo wget --directory-prefix="${tempdir}/opt/sgx/" ${sgx_http}/t/ti-sgx-ti33x-ddk-um/ti-sgx-ti33x-ddk-um_1.14.3699939-git20171201.0-0rcnee9~stretch+20190328_armhf.deb
+		sudo wget --directory-prefix="${tempdir}/opt/sgx/" ${sgx_http}/t/ti-sgx-ti335x-modules-${repo_rcnee_pkg_version}/ti-sgx-ti335x-modules-${repo_rcnee_pkg_version}_1${deb_codename}_armhf.deb
+		sudo wget --directory-prefix="${tempdir}/opt/sgx/" ${sgx_http}/t/ti-sgx-jacinto6evm-modules-${repo_rcnee_pkg_version}/ti-sgx-jacinto6evm-modules-${repo_rcnee_pkg_version}_1${deb_codename}_armhf.deb
+		wfile="${tempdir}/opt/sgx/status"
+		sudo sh -c "echo 'not_installed' >> ${wfile}"
+	fi
+else
+	if [ "x${repo_rcnee_sgx}" = "xenable" ] ; then
+		sudo mkdir -p "${tempdir}/opt/sgx/"
+		wfile="${tempdir}/opt/sgx/status"
+		sudo sh -c "echo 'installed' >> ${wfile}"
+	fi
 fi
 
 if [ -n "${early_chroot_script}" -a -r "${DIR}/target/chroot/${early_chroot_script}" ] ; then
@@ -1378,6 +1478,8 @@ cat > "${DIR}/cleanup_script.sh" <<-__EOF__
 		apt-get clean
 		rm -rf /var/lib/apt/lists/*
 
+		rm -rf /root/.cache/pip
+
 		if [ -d /var/cache/c9-core-installer/ ] ; then
 			rm -rf /var/cache/c9-core-installer/ || true
 		fi
@@ -1398,10 +1500,6 @@ cat > "${DIR}/cleanup_script.sh" <<-__EOF__
 		if [ "x\${distro}" = "xUbuntu" ] ; then
 			rm -f /sbin/initctl || true
 			dpkg-divert --local --rename --remove /sbin/initctl
-		fi
-
-		if [ -f /etc/apt/apt.conf.d/03-proxy-oracle ] ; then
-			rm -rf /etc/apt/apt.conf.d/03-proxy-oracle || true
 		fi
 
 		if [ -f /etc/apt/apt.conf.d/03-proxy-https ] ; then
@@ -1457,6 +1555,10 @@ if [ -f "${tempdir}/usr/bin/qemu-aarch64-static" ] ; then
 	sudo rm -f "${tempdir}/usr/bin/qemu-aarch64-static" || true
 fi
 
+if [ -f "${tempdir}/usr/bin/qemu-riscv64-static" ] ; then
+	sudo rm -f "${tempdir}/usr/bin/qemu-riscv64-static" || true
+fi
+
 echo "${rfs_username}:${rfs_password}" > /tmp/user_password.list
 sudo mv /tmp/user_password.list "${DIR}/deploy/${export_filename}/user_password.list"
 
@@ -1510,7 +1612,7 @@ fi
 if [ "x${chroot_directory}" = "xenable" ]; then
 	echo "Log: moving rootfs to directory: [${deb_arch}-rootfs-${deb_distribution}-${deb_codename}]"
 	sudo mv -v "${tempdir}" "${DIR}/deploy/${export_filename}/${deb_arch}-rootfs-${deb_distribution}-${deb_codename}"
-	du -h --max-depth=0 "${DIR}/deploy/${export_filename}/${deb_arch}-rootfs-${deb_distribution}-${deb_codename}"
+	sudo du -h --max-depth=0 "${DIR}/deploy/${export_filename}/${deb_arch}-rootfs-${deb_distribution}-${deb_codename}"
 else
 	cd "${tempdir}" || true
 	echo "Log: packaging rootfs: [${deb_arch}-rootfs-${deb_distribution}-${deb_codename}.tar]"
