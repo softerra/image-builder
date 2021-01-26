@@ -4,7 +4,7 @@ cd $(cd $(dirname $0); pwd)/..
 
 BUILD_SYS="image-builder"
 DOCKER_IMG="${BUILD_SYS}-iotcrafter"
-DOCKER_IMG_TAG="stretch"
+DOCKER_IMG_TAG="buster"
 DOCKER="docker"
 DOCKER_CONTAINER_SUFFIX=${1:-iotc}
 set +e
@@ -53,8 +53,7 @@ fi
 
 if [ -z "${IMG_CONF}" ]; then
 	echo "IMG_CONF not set in 'config', build default" 1>&2
-	#IMG_CONF=iotcrafter-debian-stretch-v4.9
-	IMG_CONF=iotcrafter-debian-stretch-v4.14
+	IMG_CONF=iotcrafter-debian-buster-v5.4.conf
 fi
 
 CONTAINER_NAME="${BUILD_SYS}_${DOCKER_CONTAINER_SUFFIX}_work"

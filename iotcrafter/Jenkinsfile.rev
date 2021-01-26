@@ -4,10 +4,10 @@ def initialGitRevision = '7e36801' // config for 4.9 starts since this revision 
 def workerJob = 'oprog-img-bbb-build'
 
 def configList = [
+		'iotcrafter-debian-buster-v5.4.conf': [
+				'id': 'v5.4', 'branchId': 'stable', 'oldRelease': false ],
 		'iotcrafter-debian-buster-v4.19.conf': [
-				'id': 'v4.19', 'branchId': 'stable', 'oldRelease': false ],
-		'iotcrafter-debian-stretch-v4.14': [
-				'id': 'v4.14', 'branchId': 'back', 'oldRelease': false ]
+				'id': 'v4.19', 'branchId': 'back', 'oldRelease': false ]
 	]
 
 properties([disableConcurrentBuilds(),

@@ -1,4 +1,4 @@
-ARG DEB_DISTRO=stretch
+ARG DEB_DISTRO=buster
 FROM local/cross-build-armv7l:$DEB_DISTRO
 
 ARG DEB_DISTRO
@@ -11,16 +11,6 @@ RUN apt-get -y update && \
 		git vim parted \
 		quilt realpath qemu-user-static debootstrap zerofree pxz zip dosfstools \
 		bsdtar libcap2-bin rsync grep udev xz-utils curl xxd file
-
-# need for pi-gen running in jessie container
-RUN if [ "$DEB_DISTRO" = "jessie" ]; then \
-		sed -i '1 i\\
-deb http://deb.debian.org/debian jessie-backports main\
-' /etc/apt/sources.list \
-		&& apt-get update \
-		&& apt-get install -y e2fslibs=1.43.3* e2fsprogs=1.43.3* \
-		&& sed -i '1 d' /etc/apt/sources.list; \
-	fi
 
 # need for kernel build (pi-gen kernel update)
 RUN apt-get -y install \

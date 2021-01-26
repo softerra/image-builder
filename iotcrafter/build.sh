@@ -56,6 +56,8 @@ if [[ "${IMG_CONF}" =~ v4\.14 ]]; then
 	pru_rproc="--enable-uboot-pru-rproc-414ti"
 elif [[ "${IMG_CONF}" =~ v4\.19 ]]; then
 	pru_rproc="--enable-uboot-pru-rproc-419ti"
+elif [[ "${IMG_CONF}" =~ v5\.4 ]]; then
+	pru_rproc="--enable-uboot-pru-rproc-54ti"
 fi
 
 

@@ -4,7 +4,7 @@ cd $(cd $(dirname $0); pwd)/../..
 
 BUILD_SYS="image-builder"
 DOCKER_IMG="${BUILD_SYS}-iotcrafter"
-DOCKER_IMG_TAG="stretch"
+DOCKER_IMG_TAG="buster"
 DOCKER="docker"
 DOCKER_CONTAINER_SUFFIX=${1:-iotc}
 
