@@ -18,6 +18,7 @@ echo "Downloading linux headers: ${repo_rcnee_pkg_version}"
 
 # setup APT to use local temporary cache and sources list
 cat > apt.conf <<EOF
+Acquire::AllowInsecureRepositories "true";
 Dir::Etc::main ".";
 Dir::Etc::Parts "./apt.conf.d";
 Dir::Etc::sourcelist "./sources.list";
