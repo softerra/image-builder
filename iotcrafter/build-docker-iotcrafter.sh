@@ -69,7 +69,10 @@ fi
 # create dirs having respective docker volumes managed by original build scripts
 mkdir -p ignore
 mkdir -p git
-buildCommand="dpkg-reconfigure qemu-user-static && ./iotcrafter/build.sh; \
+#buildCommand="dpkg-reconfigure qemu-user-static && ./iotcrafter/build.sh; \
+#				BUILD_RC=\$?; \
+#				iotcrafter/postbuild.sh \$BUILD_RC"
+buildCommand="update-binfmts --enable qemu-arm && ./iotcrafter/build.sh; \
 				BUILD_RC=\$?; \
 				iotcrafter/postbuild.sh \$BUILD_RC"
 
