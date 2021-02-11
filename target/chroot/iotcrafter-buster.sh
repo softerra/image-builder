@@ -335,13 +335,14 @@ other_source_links
 ## /usr/bin/bb-wl18xx-tether which restarts it
 #sed -i 's/^\(TETHER_ENABLED\)=.*$/\1=no/' /etc/default/bb-wl18xx
 
+# moved to iotc_core postinst
 #systemctl disable apache2
 
-# back apt-daily* stuff
-systemctl enable apt-daily.service
-systemctl enable apt-daily.timer
-systemctl enable apt-daily-upgrade.service
-systemctl enable apt-daily-upgrade.timer
+# back apt-daily* stuff - moved to iotc_core postinst
+#systemctl enable apt-daily.service
+#systemctl enable apt-daily.timer
+#systemctl enable apt-daily-upgrade.service
+#systemctl enable apt-daily-upgrade.timer
 
 # change default target from graphical to multi-user
 systemctl set-default multi-user.target
@@ -371,10 +372,10 @@ dpkg-reconfigure -fnoninteractive -plow unattended-upgrades
 # remove all iotc's settings
 echo PURGE | debconf-communicate iotc
 
-# fix supervisor start order
-sed -i 's/^After=\(.*\)$/After=\1 getty.target/' /lib/systemd/system/supervisor.service
+# fix supervisor start order - moved to iotc_core postinst
+#sed -i 's/^After=\(.*\)$/After=\1 getty.target/' /lib/systemd/system/supervisor.service
 
-IOTC_INIT_REV=22b0a544b139aff5574c6801e796914eb7241c54
+IOTC_INIT_REV=f93e38678060ea6bf3e0d4c6ba67c387c3fd5954
 wget -P /opt/iotc/bin/ https://raw.githubusercontent.com/softerra/iotc_scripts/${IOTC_INIT_REV}/board/iotc_init.sh
 sed -i 's/^\(iotc_init_version\)=.*$/\1="'${IOTC_INIT_REV}'"/' /opt/iotc/bin/iotc_init.sh
 chmod 755 /opt/iotc/bin/iotc_init.sh
