@@ -1,5 +1,4 @@
-def deploy = ['base': '/var/www/jenkins/board_images',
-				'old_base': '/var/www/iotcrafter_images' ]
+def deploy = ['base': '/var/www/jenkins/board_images']
 
 // Image naming:
 // <git-descr>-<config-id>-<debian-name>-iotcrafter.img
@@ -8,7 +7,7 @@ def deploy = ['base': '/var/www/jenkins/board_images',
 // debian-name - jessie|stretch..
 // Image deployment:
 // <base>/<branch-id>/<config-id>/date/<img>
-// branch-id - almost respective to debian-name, e.g. 'old', 'stable', 'next' or 'stable', 'dev'
+// branch-id - almost respective to debian-name, e.g. 'stable', 'next' or 'stable', 'dev'
 
 properties([disableConcurrentBuilds(),
 			buildDiscarder(
@@ -20,8 +19,6 @@ properties([disableConcurrentBuilds(),
 				string(defaultValue: '', description: '', name: 'bsRepo'),
 				string(defaultValue: '', description: '', name: 'buildGitCommit'),
 				string(defaultValue: '', description: 'build identification string', name: 'buildInfo'),
-
-				booleanParam(defaultValue: false, description: 'make a copy for old installer', name: 'isOldRelease'),
 
 				string(defaultValue: '', description: 'image-builder configuration', name: 'buildConfig'),
 
@@ -103,17 +100,6 @@ EOF
 
 				cp -f \$RESULT_ZIP_FNAME \$TAG_DIR
 				cp -f \${RESULT_ZIP_FNAME}.sha256sum \$TAG_DIR
-
-				# deploy img for old installer
-				if [ "${params.isOldRelease}" = "true" ]; then
-					mkdir -p ${deploy['old_base']}/\${CUR_DATE}
-
-					echo "Installing img for old installer"
-					mv -f \$RESULT_IMG_FNAME bbb.img
-					zip -9 bbb.img.zip bbb.img
-					rm -f bbb.img
-					mv -f bbb.img.zip ${deploy['old_base']}/\${CUR_DATE}
-				fi
 			"""
 		}
 	}

@@ -5,9 +5,9 @@ def workerJob = 'oprog-img-bbb-build'
 
 def configList = [
 		'iotcrafter-debian-buster-v4.19.conf': [
-				'id': 'v4.19', 'branchId': 'stable', 'oldRelease': false ],
+				'id': 'v4.19', 'branchId': 'stable' ],
 		'iotcrafter-debian-buster-v5.4.conf': [
-				'id': 'v5.4', 'branchId': 'next', 'oldRelease': false ]
+				'id': 'v5.4', 'branchId': 'next' ]
 	]
 
 properties([disableConcurrentBuilds(),
@@ -176,9 +176,6 @@ node {
 						[$class: 'StringParameterValue', name: 'buildGitCommit', value: releaseCommit ],
 						[$class: 'StringParameterValue', name: 'buildInfo', value: releaseInfo ],
 
-						// duplicate in old repo for old installer
-						[$class: 'BooleanParameterValue', name: 'isOldRelease', value: configProps.oldRelease ],
-
 						[$class: 'StringParameterValue', name: 'buildConfig', value: buildConfig ],
 
 						[$class: 'StringParameterValue', name: 'branchId', value: configProps.branchId ],
@@ -206,8 +203,6 @@ node {
 						[$class: 'StringParameterValue', name: 'bsRepo', value: bsRepo ],
 						[$class: 'StringParameterValue', name: 'buildGitCommit', value: scmVars.GIT_COMMIT ],
 						[$class: 'StringParameterValue', name: 'buildInfo', value: headInfo ],
-
-						[$class: 'BooleanParameterValue', name: 'isOldRelease', value: false ],
 
 						[$class: 'StringParameterValue', name: 'buildConfig', value: buildConfig ],
 
